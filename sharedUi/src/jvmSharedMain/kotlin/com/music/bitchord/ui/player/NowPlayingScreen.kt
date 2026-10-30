@@ -827,6 +827,10 @@ fun NowPlayingScreen(
     // the bottom navigation pill.
     val playerHaze = remember { HazeState() }
     var showAudioPipeline by remember { mutableStateOf(false) }
+    // Ultra: the PowerAmp-style quick popup, opened by long-pressing the
+    // nerd-stats line — separate from [showAudioPipeline], which the output
+    // drawer's own button still opens.
+    var showAudioInfo by remember { mutableStateOf(false) }
     var showCast by remember { mutableStateOf(false) }
     var showAudioOutput by remember { mutableStateOf(false) }
     var showVideoQuality by remember { mutableStateOf(false) }
@@ -1037,7 +1041,7 @@ fun NowPlayingScreen(
     val currentLyricsOffsetOpen by rememberUpdatedState(lyricsOffsetOpen)
     val overlayOpen = remember {
         derivedStateOf {
-            currentMenuOpen() || showAudioPipeline || showCast || showAudioOutput || showVideoQuality ||
+            currentMenuOpen() || showAudioPipeline || showAudioInfo || showCast || showAudioOutput || showVideoQuality ||
                 showLyricsProviders || showListenTogetherMembers || lyricsShare != null || currentLyricsOffsetOpen
         }
     }
@@ -1107,6 +1111,7 @@ fun NowPlayingScreen(
     PlayerBackHandler(enabled = showListenTogetherMembers) { showListenTogetherMembers = false }
 
     PlayerBackHandler(enabled = showAudioPipeline) { showAudioPipeline = false }
+    PlayerBackHandler(enabled = showAudioInfo) { showAudioInfo = false }
 
     PlayerBackHandler(enabled = showCast) { showCast = false }
 
@@ -1515,8 +1520,8 @@ fun NowPlayingScreen(
     // screen, the landscape one on the sleeve alone — the right column there is
     // full of horizontal sliders and a lyric list that should not be one stray
     // sideways drag away from changing the song.
-    val skipSwipeGesture = Modifier.pointerInput(showAudioPipeline, showCast, panelScrolling, controlsLocked) {
-        if (showAudioPipeline || showCast || panelScrolling) return@pointerInput
+    val skipSwipeGesture = Modifier.pointerInput(showAudioPipeline, showAudioInfo, showCast, panelScrolling, controlsLocked) {
+        if (showAudioPipeline || showAudioInfo || showCast || panelScrolling) return@pointerInput
         var total = 0f
         detectHorizontalDragGestures(
             onDragStart = { total = 0f },
@@ -1629,6 +1634,12 @@ fun NowPlayingScreen(
                 hazeState = playerHaze,
                 isPlaying = isPlaying,
                 onDismiss = { showAudioPipeline = false },
+            )
+        }
+        if (showAudioInfo) {
+            AudioInfoDialog(
+                hazeState = playerHaze,
+                onDismiss = { showAudioInfo = false },
             )
         }
         if (showCast) {
@@ -2082,6 +2093,7 @@ fun NowPlayingScreen(
                                     // Faded with the player rather than flown with
                                     // the sleeve: the cover in the bar has none.
                                     .graphicsLayer { alpha = if (panelOpen) 0f else dockFade() },
+                                onLongPress = { showAudioInfo = true },
                             )
                         }
                     },
@@ -2398,7 +2410,7 @@ fun NowPlayingScreen(
                 // A subview replaces that hero with the blurred artwork backdrop, so it gets
                 // only a modest floor rather than an opaque status-bar surface.
                 val playerSubviewOpen = lyricsOpen || queueOpen || lyricsOffsetOpen ||
-                    showAudioPipeline || showCast || showAudioOutput || showVideoQuality || showLyricsProviders ||
+                    showAudioPipeline || showAudioInfo || showCast || showAudioOutput || showVideoQuality || showLyricsProviders ||
                     lyricsShare != null
                 val topGradientAlpha = if (playerSubviewOpen) {
                     maxOf(artworkStatusScrimAlpha, SUBVIEW_STATUS_SCRIM_MIN_ALPHA)
@@ -2627,8 +2639,8 @@ fun NowPlayingScreen(
                             // half second lying across a list the finger was already
                             // scrolling.
                             .onGloballyPositioned { dismissBandSpace = it }
-                            .pointerInput(showAudioPipeline, showCast, panelScrolling) {
-                                if (showAudioPipeline || showCast || panelScrolling) return@pointerInput
+                            .pointerInput(showAudioPipeline, showAudioInfo, showCast, panelScrolling) {
+                                if (showAudioPipeline || showAudioInfo || showCast || panelScrolling) return@pointerInput
                                 awaitEachGesture {
                                     // Unconsumed on purpose, as the blanket version was:
                                     // the collapsed sleeve's own clickable — the way back
@@ -3388,6 +3400,7 @@ fun NowPlayingScreen(
                                         .graphicsLayer {
                                             alpha = (1f - p() * 2f) * spotifyChromeAlpha
                                         },
+                                    onLongPress = { showAudioInfo = true },
                                 )
                             }
                         }

@@ -491,6 +491,18 @@ object AppSettings {
     val liquidGlassLensAmount = MutableStateFlow(0.5f)
     val liquidGlassSurfaceOpacity = MutableStateFlow(0.4f)
 
+    /**
+     * Ultra: fraction of full resolution the glass pipeline samples, blurs and
+     * refracts its backdrop at — upstream BitChord fixed this at a third
+     * (`GLASS_RESOLUTION_SCALE` in [com.music.bitchord.ui.components.liquidGlass])
+     * to hide a third of a blurred surface's pixels nobody could see anyway.
+     * Raising it trades that saved GPU work back for a sharper glass surface —
+     * most visible at a low blur radius, where there is little blur left to
+     * hide the upscale. Defaults to upstream's 1/3 so turning Liquid Glass on
+     * looks exactly as it did until this is actually moved.
+     */
+    val liquidGlassResolutionScale = MutableStateFlow(1f / 3f)
+
     /** Blurs unfocused lyric lines, keeping the active line sharp. */
     val lyricsBlur = MutableStateFlow(true)
 
@@ -1000,6 +1012,8 @@ object AppSettings {
         liquidGlassVibrancy.value = prefs.getFloat(KEY_LIQUID_GLASS_VIBRANCY, 1f).coerceIn(0f, 2f)
         liquidGlassLensAmount.value = prefs.getFloat(KEY_LIQUID_GLASS_LENS, 0.5f).coerceIn(0f, 1f)
         liquidGlassSurfaceOpacity.value = prefs.getFloat(KEY_LIQUID_GLASS_OPACITY, 0.4f).coerceIn(0f, 1f)
+        liquidGlassResolutionScale.value =
+            prefs.getFloat(KEY_LIQUID_GLASS_RESOLUTION, 1f / 3f).coerceIn(MIN_GLASS_RESOLUTION_SCALE, 1f)
         lyricsBlur.value = prefs.getBoolean(KEY_LYRICS_BLUR, true)
         lyricsOffsetMs.value = prefs.getInt(KEY_LYRICS_OFFSET_MS, 0)
             .coerceIn(MIN_LYRICS_OFFSET_MS, MAX_LYRICS_OFFSET_MS)
@@ -1452,6 +1466,15 @@ object AppSettings {
         val coerced = value.coerceIn(0f, 1f)
         liquidGlassSurfaceOpacity.value = coerced
         prefs.edit().putFloat(KEY_LIQUID_GLASS_OPACITY, coerced).apply()
+    }
+
+    /** Below this the glass shaders sample too few pixels to stay coherent. */
+    const val MIN_GLASS_RESOLUTION_SCALE = 0.15f
+
+    fun setLiquidGlassResolutionScale(value: Float) {
+        val coerced = value.coerceIn(MIN_GLASS_RESOLUTION_SCALE, 1f)
+        liquidGlassResolutionScale.value = coerced
+        prefs.edit().putFloat(KEY_LIQUID_GLASS_RESOLUTION, coerced).apply()
     }
 
     fun setHighPerformanceMode(value: Boolean) {
@@ -2225,6 +2248,7 @@ object AppSettings {
     private const val KEY_LIQUID_GLASS_VIBRANCY = "liquid_glass_vibrancy"
     private const val KEY_LIQUID_GLASS_LENS = "liquid_glass_lens_amount"
     private const val KEY_LIQUID_GLASS_OPACITY = "liquid_glass_surface_opacity"
+    private const val KEY_LIQUID_GLASS_RESOLUTION = "liquid_glass_resolution_scale"
     private const val KEY_LYRICS_BLUR = "lyrics_blur"
     private const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"
     private const val KEY_TRANSLATION_LANGUAGE = "translation_language"

@@ -75,18 +75,15 @@ private const val LENS_HEIGHT = 0.5f
 private const val LENS_MAX_DP = 48f
 private const val SURFACE_OPACITY = 0.4f
 
-/**
- * Resolution fraction the glass surface records and processes its backdrop at.
- *
- * A third, which is what Echo's `glassResolutionScale` comes to at this blur
- * radius. It was briefly raised to a half while the sharp-text bug was being
- * chased — wrongly, as it turned out: the cause was a transparent backdrop, not
- * the resample (see MainActivity's `paintBackdrop`). A third is nine times fewer
- * pixels than full resolution through the colour matrix, the blur and the lens
- * shader, on as many as six surfaces at once in the middle of a fold, and the
- * blur is what hides the upscale.
- */
-private const val GLASS_RESOLUTION_SCALE = 0.33f
+// Ultra: the resolution fraction the glass surface records and processes its
+// backdrop at is no longer fixed here — see [AppSettings.liquidGlassResolutionScale],
+// read live below. Upstream fixed it at a third, which is what Echo's
+// `glassResolutionScale` comes to at this blur radius: nine times fewer
+// pixels than full resolution through the colour matrix, the blur and the
+// lens shader, on as many as six surfaces at once in the middle of a fold,
+// with the blur hiding the upscale. It was briefly raised to a half while a
+// sharp-text bug was being chased — wrongly, as it turned out: the cause was
+// a transparent backdrop, not the resample (see MainActivity's `paintBackdrop`).
 
 /**
  * The hairline along a bar's edge, and what stands in for the glass rim
@@ -225,9 +222,10 @@ fun Modifier.liquidGlass(
     val vibrancy by AppSettings.liquidGlassVibrancy.collectAsStateWithLifecycle()
     val lensAmount by AppSettings.liquidGlassLensAmount.collectAsStateWithLifecycle()
     val surfaceOpacity by AppSettings.liquidGlassSurfaceOpacity.collectAsStateWithLifecycle()
-    val blurPx = with(density) { blurDp.dp.toPx() } * GLASS_RESOLUTION_SCALE
-    val lensHeightPx = with(density) { (LENS_HEIGHT * LENS_MAX_DP).dp.toPx() } * GLASS_RESOLUTION_SCALE
-    val lensAmountPx = with(density) { (lensAmount * LENS_MAX_DP).dp.toPx() } * GLASS_RESOLUTION_SCALE
+    val resolutionScale by AppSettings.liquidGlassResolutionScale.collectAsStateWithLifecycle()
+    val blurPx = with(density) { blurDp.dp.toPx() } * resolutionScale
+    val lensHeightPx = with(density) { (LENS_HEIGHT * LENS_MAX_DP).dp.toPx() } * resolutionScale
+    val lensAmountPx = with(density) { (lensAmount * LENS_MAX_DP).dp.toPx() } * resolutionScale
     val themeTint = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) {
         Color(0xFFFAFAFA)
     } else {
@@ -256,6 +254,6 @@ fun Modifier.liquidGlass(
             drawRect(color = surfaceTintColor, size = size)
         },
         exportedBackdrop = exportedBackdrop,
-        backdropScale = GLASS_RESOLUTION_SCALE,
+        backdropScale = resolutionScale,
     )
 }

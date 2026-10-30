@@ -251,6 +251,7 @@ fun SettingsScreen(
     val liquidGlassVibrancy by AppSettings.liquidGlassVibrancy.collectAsStateWithLifecycle()
     val liquidGlassLensAmount by AppSettings.liquidGlassLensAmount.collectAsStateWithLifecycle()
     val liquidGlassSurfaceOpacity by AppSettings.liquidGlassSurfaceOpacity.collectAsStateWithLifecycle()
+    val liquidGlassResolutionScale by AppSettings.liquidGlassResolutionScale.collectAsStateWithLifecycle()
     val liquidGlassLensSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     val lyricsBlur by AppSettings.lyricsBlur.collectAsStateWithLifecycle()
     val animatedCanvas by AppSettings.animatedCanvas.collectAsStateWithLifecycle()
@@ -1024,7 +1025,7 @@ fun SettingsScreen(
                     }
                 }
                 val glassOpacityTitle = stringResource(R.string.liquid_glass_opacity)
-                row(glassOpacityTitle, "glass", "tint", "opacity", "ultra", divided = false) {
+                row(glassOpacityTitle, "glass", "tint", "opacity", "ultra") {
                     SliderRow(
                         icon = SfIcons.AutoAwesome,
                         title = glassOpacityTitle,
@@ -1034,6 +1035,19 @@ fun SettingsScreen(
                         onSliderValue = AppSettings::setLiquidGlassSurfaceOpacity,
                         valueRange = 0f..1f,
                         steps = 9,
+                    )
+                }
+                val glassResolutionTitle = stringResource(R.string.liquid_glass_resolution)
+                row(glassResolutionTitle, "glass", "resolution", "quality", "sharpness", "ultra", divided = false) {
+                    SliderRow(
+                        icon = SfIcons.AutoAwesome,
+                        title = glassResolutionTitle,
+                        subtitle = stringResource(R.string.liquid_glass_resolution_subtitle),
+                        value = "%.0f%%".format(liquidGlassResolutionScale * 100),
+                        sliderValue = liquidGlassResolutionScale,
+                        onSliderValue = AppSettings::setLiquidGlassResolutionScale,
+                        valueRange = AppSettings.MIN_GLASS_RESOLUTION_SCALE..1f,
+                        steps = 16,
                     )
                 }
             }

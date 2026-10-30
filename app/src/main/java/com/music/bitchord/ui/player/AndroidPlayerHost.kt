@@ -222,6 +222,10 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
             isPlaying = isPlaying,
         )
 
+    @Composable
+    override fun AudioInfoDialog(hazeState: HazeState, onDismiss: () -> Unit) =
+        com.music.bitchord.ui.components.AudioInfoDialog(hazeState = hazeState, onDismiss = onDismiss)
+
     // The ⋯ menu's own material: a still of the player, blurred under each
     // panel exactly as [menuBackdropFrost] blurs it under the menu. Below
     // Android 12 there is no RenderEffect to blur it with.

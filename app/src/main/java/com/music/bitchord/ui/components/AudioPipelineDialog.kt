@@ -102,7 +102,7 @@ private val PIPELINE_ICON_TINT = Color.White.copy(alpha = 0.6f)
  * output) is the one path where it reaches the DAC unchanged, and every DSP
  * stage is bypassed there, so only the source itself can make it inexact.
  */
-private fun bitExactVerdict(
+internal fun bitExactVerdict(
     dsd: Boolean,
     bitPerfect: BitPerfectOutput.Status,
     outputExact: Boolean,
@@ -946,7 +946,7 @@ private fun PipelineNote(text: String) {
 }
 
 /** 44100 -> "44.1 kHz", 2822400 -> "2.8224 MHz". */
-private fun rateText(hz: Int): String =
+internal fun rateText(hz: Int): String =
     NerdStats.megahertzLabel(hz) ?: "${"%.1f".format(Locale.ROOT, hz / 1000f).removeSuffix(".0")} kHz"
 
 internal fun formatUsbCapability(raw: String): String {

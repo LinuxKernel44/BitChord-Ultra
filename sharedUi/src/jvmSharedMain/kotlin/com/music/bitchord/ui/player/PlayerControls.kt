@@ -35,6 +35,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -367,9 +368,13 @@ internal fun PlaybackQualityLabel(
 /**
  * Stats for nerds, on the foot of the sleeve: the measured stream, and under
  * it what Automix's analysis is doing. Nothing at all while the setting is off.
+ *
+ * Ultra: [onLongPress], when given, opens the full PowerAmp-style Audio Info
+ * popup — see [AudioInfoDialog]. A plain tap is left alone, so nothing here
+ * changes for anyone who never discovers the gesture.
  */
 @Composable
-internal fun SleeveNerdStats(song: Song, modifier: Modifier = Modifier) {
+internal fun SleeveNerdStats(song: Song, modifier: Modifier = Modifier, onLongPress: (() -> Unit)? = null) {
     val showNerdStats by PlayerSettings.showNerdStats.collectAsStateWithLifecycle()
     if (!showNerdStats) return
     val nerdStats by NerdStats.current.collectAsStateWithLifecycle()
@@ -400,7 +405,18 @@ internal fun SleeveNerdStats(song: Song, modifier: Modifier = Modifier) {
     )
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier,
+        modifier = modifier.then(
+            if (onLongPress != null) {
+                Modifier.combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                    onLongClick = onLongPress,
+                )
+            } else {
+                Modifier
+            },
+        ),
     ) {
         nerdStats?.describe()?.let { stats ->
             Text(

@@ -114,6 +114,14 @@ interface PlayerHost {
     @Composable
     fun AudioPipelineDialog(hazeState: HazeState, isPlaying: Boolean, onDismiss: () -> Unit)
 
+    /**
+     * Ultra: the quick PowerAmp-style audio info popup, opened by long-pressing
+     * the "stats for nerds" line under the sleeve — see
+     * [com.music.bitchord.ui.components.AudioInfoDialog] on the Android side.
+     */
+    @Composable
+    fun AudioInfoDialog(hazeState: HazeState, onDismiss: () -> Unit)
+
     /** Casting to a network receiver. Absent, and so never drawn, where the platform has none. */
     val castState: StateFlow<CastUi> get() = NoCast
 
@@ -478,3 +486,7 @@ internal fun rememberRemoteArtworkUrl(song: Song?): String? =
 @Composable
 internal fun AudioPipelineDialog(hazeState: HazeState, isPlaying: Boolean, onDismiss: () -> Unit) =
     PlayerPlatform.host.AudioPipelineDialog(hazeState, isPlaying, onDismiss)
+
+@Composable
+internal fun AudioInfoDialog(hazeState: HazeState, onDismiss: () -> Unit) =
+    PlayerPlatform.host.AudioInfoDialog(hazeState, onDismiss)
