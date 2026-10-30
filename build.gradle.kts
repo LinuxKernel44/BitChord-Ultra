@@ -41,8 +41,12 @@ buildscript {
  * No "v" in the name — the in-app updater reads it as a number; the "v" is the
  * release tag's alone.
  */
-extra["bitchordVersionCode"] = 36
-extra["bitchordVersionName"] = "1.9"
+// Ultra: a separate applicationId (com.music.bitchordultra) makes this a
+// distinct app install as far as Android is concerned, so its own version
+// history restarts at 1.0.0 / versionCode 1 rather than continuing
+// upstream's.
+extra["bitchordVersionCode"] = 1
+extra["bitchordVersionName"] = "1.0.0"
 
 /*
  * Bump this by hand before cutting each sideloaded test build ("beta2",
