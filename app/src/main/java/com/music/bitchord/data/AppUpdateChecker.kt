@@ -42,8 +42,11 @@ object AppUpdateChecker {
 
     private const val CACHE_SUBDIR = "updates"
 
+    // Ultra: the fork's own releases, not upstream BitChord's — so Ultra
+    // installs never get nudged toward an upstream APK with a different
+    // applicationId that would fail to install over them.
     private const val LATEST_RELEASE_URL =
-        "https://api.github.com/repos/kushagrasinghx/BitChord/releases/latest"
+        "https://api.github.com/repos/LinuxKernel44/BitChord-Ultra/releases/latest"
 
     private val json = Json { ignoreUnknownKeys = true }
 
