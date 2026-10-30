@@ -20,7 +20,10 @@ enum class AudioQuality(
     val detail: String,
     val hourly: String,
 ) {
-    LOW(64, "Low", "~64 kbps · smallest download", "29 MB/hr"),
+    // Ultra: upstream BitChord's data-saver floor was 64 kbps; Ultra raises it
+    // to 128 (matching ModuleSource.LOW_CEILING_KBPS, the module-source tier
+    // split already drawn at that line) so the cheapest rung is still usable.
+    LOW(128, "Low", "~128 kbps · smallest download", "58 MB/hr"),
     MEDIUM(Int.MAX_VALUE, "Medium", "Best available · ~171 kbps Opus", "77 MB/hr"),
     HIGH(Int.MAX_VALUE, "High", "JioSaavn up to 320kbps, YouTube fallback", "144 MB/hr"),
     LOSSLESS(Int.MAX_VALUE, "Lossless", "Your addons + JioSaavn, bit-exact where available", "300+ MB/hr"),

@@ -399,7 +399,10 @@ object InnerTubeXResolver {
 
     private const val PLAYER_CONFIG_URL =
         "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json"
-    private const val LOW_KBPS = 64
+    // Ultra: matches AudioQuality.LOW.maxKbps (raised from 64), so a ceiling
+    // of Low still lands InnerTubeX on its own smallest rung rather than
+    // falling through to AUTO and spending more than "Low" promises.
+    private const val LOW_KBPS = 128
     private const val EXCLUDE_MS = 10 * 60 * 1000L
     private const val MAX_REMEMBERED = 64
     /** Off the cold-start path; the first tap on a track is rarely sooner. */

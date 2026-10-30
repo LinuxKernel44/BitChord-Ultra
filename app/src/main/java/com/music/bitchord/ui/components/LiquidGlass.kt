@@ -59,11 +59,19 @@ internal val LocalGlassExport = compositionLocalOf<LayerBackdrop?> { null }
  */
 fun isGlassSupported(sdkInt: Int = Build.VERSION.SDK_INT): Boolean = sdkInt >= Build.VERSION_CODES.S
 
-/** Apple-matched defaults (Echo's GlassEffectConfig()), fixed rather than user sliders. */
-private const val VIBRANCY = 1f
-private const val BLUR_RADIUS_DP = 8f
+/**
+ * Apple-matched defaults (Echo's GlassEffectConfig()).
+ *
+ * Ultra: vibrancy, blur radius, lens amount and surface opacity are no longer
+ * fixed — [liquidGlass] reads them live from [AppSettings.liquidGlassVibrancy]
+ * and friends, which the Liquid Glass Ultra settings screen exposes as
+ * sliders, defaulting to the values below. [LENS_HEIGHT] and [LENS_MAX_DP]
+ * stay fixed: they shape the lens band's geometry rather than its strength,
+ * and upstream BitChord never varied them either. [SURFACE_OPACITY] also
+ * stays fixed, as the fallback tint for [lightweightLiquidGlass], which has
+ * no backdrop capture to tune.
+ */
 private const val LENS_HEIGHT = 0.5f
-private const val LENS_AMOUNT = 0.5f
 private const val LENS_MAX_DP = 48f
 private const val SURFACE_OPACITY = 0.4f
 
@@ -213,21 +221,25 @@ fun Modifier.liquidGlass(
     val backdrop = LocalAppBackdrop.current
     val exportedBackdrop = LocalGlassExport.current
     val density = LocalDensity.current
-    val blurPx = with(density) { BLUR_RADIUS_DP.dp.toPx() } * GLASS_RESOLUTION_SCALE
+    val blurDp by AppSettings.liquidGlassBlurDp.collectAsStateWithLifecycle()
+    val vibrancy by AppSettings.liquidGlassVibrancy.collectAsStateWithLifecycle()
+    val lensAmount by AppSettings.liquidGlassLensAmount.collectAsStateWithLifecycle()
+    val surfaceOpacity by AppSettings.liquidGlassSurfaceOpacity.collectAsStateWithLifecycle()
+    val blurPx = with(density) { blurDp.dp.toPx() } * GLASS_RESOLUTION_SCALE
     val lensHeightPx = with(density) { (LENS_HEIGHT * LENS_MAX_DP).dp.toPx() } * GLASS_RESOLUTION_SCALE
-    val lensAmountPx = with(density) { (LENS_AMOUNT * LENS_MAX_DP).dp.toPx() } * GLASS_RESOLUTION_SCALE
+    val lensAmountPx = with(density) { (lensAmount * LENS_MAX_DP).dp.toPx() } * GLASS_RESOLUTION_SCALE
     val themeTint = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) {
         Color(0xFFFAFAFA)
     } else {
         Color(0xFF121212)
     }
-    val surfaceTintColor = surfaceTint ?: themeTint.copy(alpha = SURFACE_OPACITY)
+    val surfaceTintColor = surfaceTint ?: themeTint.copy(alpha = surfaceOpacity)
 
     return drawBackdrop(
         backdrop = backdrop,
         shape = { shape },
         effects = {
-            colorControls(saturation = 1f + 0.5f * VIBRANCY)
+            colorControls(saturation = 1f + 0.5f * vibrancy)
             blur(blurPx)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 lens(
