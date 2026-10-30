@@ -479,6 +479,18 @@ object AppSettings {
      */
     val progressiveBlur = MutableStateFlow(false)
 
+    /**
+     * Ultra: Liquid Glass tuning, exposed on the Liquid Glass Ultra settings
+     * screen instead of being fixed. Defaults match upstream BitChord's
+     * hard-coded values (see [com.music.bitchord.ui.components.liquidGlass]),
+     * so turning the switch on behaves exactly as before until one of these
+     * is actually moved.
+     */
+    val liquidGlassBlurDp = MutableStateFlow(8f)
+    val liquidGlassVibrancy = MutableStateFlow(1f)
+    val liquidGlassLensAmount = MutableStateFlow(0.5f)
+    val liquidGlassSurfaceOpacity = MutableStateFlow(0.4f)
+
     /** Blurs unfocused lyric lines, keeping the active line sharp. */
     val lyricsBlur = MutableStateFlow(true)
 
@@ -984,6 +996,10 @@ object AppSettings {
         reduceDynamicBlur.value = prefs.getBoolean(KEY_REDUCE_BLUR, false)
         liquidGlass.value = prefs.getBoolean(KEY_LIQUID_GLASS, false)
         progressiveBlur.value = prefs.getBoolean(KEY_PROGRESSIVE_BLUR, false)
+        liquidGlassBlurDp.value = prefs.getFloat(KEY_LIQUID_GLASS_BLUR, 8f).coerceIn(0f, 24f)
+        liquidGlassVibrancy.value = prefs.getFloat(KEY_LIQUID_GLASS_VIBRANCY, 1f).coerceIn(0f, 2f)
+        liquidGlassLensAmount.value = prefs.getFloat(KEY_LIQUID_GLASS_LENS, 0.5f).coerceIn(0f, 1f)
+        liquidGlassSurfaceOpacity.value = prefs.getFloat(KEY_LIQUID_GLASS_OPACITY, 0.4f).coerceIn(0f, 1f)
         lyricsBlur.value = prefs.getBoolean(KEY_LYRICS_BLUR, true)
         lyricsOffsetMs.value = prefs.getInt(KEY_LYRICS_OFFSET_MS, 0)
             .coerceIn(MIN_LYRICS_OFFSET_MS, MAX_LYRICS_OFFSET_MS)
@@ -1412,6 +1428,30 @@ object AppSettings {
     fun setProgressiveBlur(value: Boolean) {
         progressiveBlur.value = value
         prefs.edit().putBoolean(KEY_PROGRESSIVE_BLUR, value).apply()
+    }
+
+    fun setLiquidGlassBlurDp(value: Float) {
+        val coerced = value.coerceIn(0f, 24f)
+        liquidGlassBlurDp.value = coerced
+        prefs.edit().putFloat(KEY_LIQUID_GLASS_BLUR, coerced).apply()
+    }
+
+    fun setLiquidGlassVibrancy(value: Float) {
+        val coerced = value.coerceIn(0f, 2f)
+        liquidGlassVibrancy.value = coerced
+        prefs.edit().putFloat(KEY_LIQUID_GLASS_VIBRANCY, coerced).apply()
+    }
+
+    fun setLiquidGlassLensAmount(value: Float) {
+        val coerced = value.coerceIn(0f, 1f)
+        liquidGlassLensAmount.value = coerced
+        prefs.edit().putFloat(KEY_LIQUID_GLASS_LENS, coerced).apply()
+    }
+
+    fun setLiquidGlassSurfaceOpacity(value: Float) {
+        val coerced = value.coerceIn(0f, 1f)
+        liquidGlassSurfaceOpacity.value = coerced
+        prefs.edit().putFloat(KEY_LIQUID_GLASS_OPACITY, coerced).apply()
     }
 
     fun setHighPerformanceMode(value: Boolean) {
@@ -2181,6 +2221,10 @@ object AppSettings {
     private const val KEY_REDUCE_BLUR = "reduce_dynamic_blur"
     private const val KEY_LIQUID_GLASS = "liquid_glass"
     private const val KEY_PROGRESSIVE_BLUR = "progressive_blur"
+    private const val KEY_LIQUID_GLASS_BLUR = "liquid_glass_blur_dp"
+    private const val KEY_LIQUID_GLASS_VIBRANCY = "liquid_glass_vibrancy"
+    private const val KEY_LIQUID_GLASS_LENS = "liquid_glass_lens_amount"
+    private const val KEY_LIQUID_GLASS_OPACITY = "liquid_glass_surface_opacity"
     private const val KEY_LYRICS_BLUR = "lyrics_blur"
     private const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"
     private const val KEY_TRANSLATION_LANGUAGE = "translation_language"

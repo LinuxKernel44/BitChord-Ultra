@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">BitChord Ultra</string>
     <string name="playback_channel_name">Now playing</string>
     <string name="download_channel_name">Downloads</string>
     <string name="download_channel_description">Songs being saved to your Music folder</string>
@@ -361,6 +361,14 @@
     <string name="liquid_glass_subtitle">Real refracting glass on the floating nav bar. Android 12+ only; uses more GPU.</string>
     <string name="progressive_blur">Progressive Blur</string>
     <string name="liquid_glass_unavailable">Requires Android 12 or newer</string>
+    <string name="liquid_glass_blur">Glass Blur</string>
+    <string name="liquid_glass_blur_subtitle">How strongly the glass blurs what is behind it.</string>
+    <string name="liquid_glass_vibrancy">Glass Vibrancy</string>
+    <string name="liquid_glass_vibrancy_subtitle">Colour saturation boost applied to the sampled backdrop.</string>
+    <string name="liquid_glass_lens">Lens Strength</string>
+    <string name="liquid_glass_lens_subtitle">Refraction along the glass edge. Android 13+ only.</string>
+    <string name="liquid_glass_opacity">Glass Tint</string>
+    <string name="liquid_glass_opacity_subtitle">How opaque the glass surface's own tint is over the blur.</string>
     <string name="full_screen_cover_art">Full-screen cover art</string>
     <string name="legacy_mesh_gradient">Legacy mesh gradient</string>
     <string name="legacy_mesh_gradient_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>

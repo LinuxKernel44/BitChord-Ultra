@@ -62,7 +62,10 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.music.bitchord"
+        // Ultra fork: a different applicationId from upstream BitChord so both
+        // can be installed side by side; the Kotlin namespace (and every
+        // `com.music.bitchord` package/import in the source tree) is untouched.
+        applicationId = "com.music.bitchordultra"
         // 26 keeps reach wide; real-time blur (RenderEffect) kicks in on API 31+,
         // Haze falls back to a translucent scrim below that.
         minSdk = 26

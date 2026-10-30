@@ -246,6 +246,12 @@ fun SettingsScreen(
     val liquidGlass by AppSettings.liquidGlass.collectAsStateWithLifecycle()
     val progressiveBlur by AppSettings.progressiveBlur.collectAsStateWithLifecycle()
     val liquidGlassSupported = isGlassSupported()
+    // Ultra: Liquid Glass Ultra sliders.
+    val liquidGlassBlurDp by AppSettings.liquidGlassBlurDp.collectAsStateWithLifecycle()
+    val liquidGlassVibrancy by AppSettings.liquidGlassVibrancy.collectAsStateWithLifecycle()
+    val liquidGlassLensAmount by AppSettings.liquidGlassLensAmount.collectAsStateWithLifecycle()
+    val liquidGlassSurfaceOpacity by AppSettings.liquidGlassSurfaceOpacity.collectAsStateWithLifecycle()
+    val liquidGlassLensSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     val lyricsBlur by AppSettings.lyricsBlur.collectAsStateWithLifecycle()
     val animatedCanvas by AppSettings.animatedCanvas.collectAsStateWithLifecycle()
     val canvasOverCellular by AppSettings.canvasOverCellular.collectAsStateWithLifecycle()
@@ -972,6 +978,62 @@ fun SettingsScreen(
                         title = progressiveBlurTitle,
                         checked = progressiveBlur,
                         onCheckedChange = AppSettings::setProgressiveBlur,
+                    )
+                }
+                // Ultra: Liquid Glass Ultra — the four knobs upstream BitChord
+                // fixed as constants, as sliders instead.
+                val glassBlurTitle = stringResource(R.string.liquid_glass_blur)
+                row(glassBlurTitle, "glass", "blur", "ultra") {
+                    SliderRow(
+                        icon = SfIcons.AutoAwesome,
+                        title = glassBlurTitle,
+                        subtitle = stringResource(R.string.liquid_glass_blur_subtitle),
+                        value = "${liquidGlassBlurDp.roundToInt()}dp",
+                        sliderValue = liquidGlassBlurDp,
+                        onSliderValue = AppSettings::setLiquidGlassBlurDp,
+                        valueRange = 0f..24f,
+                        steps = 23,
+                    )
+                }
+                val glassVibrancyTitle = stringResource(R.string.liquid_glass_vibrancy)
+                row(glassVibrancyTitle, "glass", "vibrancy", "saturation", "ultra") {
+                    SliderRow(
+                        icon = SfIcons.AutoAwesome,
+                        title = glassVibrancyTitle,
+                        subtitle = stringResource(R.string.liquid_glass_vibrancy_subtitle),
+                        value = "%.0f%%".format(liquidGlassVibrancy * 100),
+                        sliderValue = liquidGlassVibrancy,
+                        onSliderValue = AppSettings::setLiquidGlassVibrancy,
+                        valueRange = 0f..2f,
+                        steps = 19,
+                    )
+                }
+                if (liquidGlassLensSupported) {
+                    val glassLensTitle = stringResource(R.string.liquid_glass_lens)
+                    row(glassLensTitle, "glass", "lens", "refraction", "ultra") {
+                        SliderRow(
+                            icon = SfIcons.AutoAwesome,
+                            title = glassLensTitle,
+                            subtitle = stringResource(R.string.liquid_glass_lens_subtitle),
+                            value = "%.0f%%".format(liquidGlassLensAmount * 100),
+                            sliderValue = liquidGlassLensAmount,
+                            onSliderValue = AppSettings::setLiquidGlassLensAmount,
+                            valueRange = 0f..1f,
+                            steps = 9,
+                        )
+                    }
+                }
+                val glassOpacityTitle = stringResource(R.string.liquid_glass_opacity)
+                row(glassOpacityTitle, "glass", "tint", "opacity", "ultra", divided = false) {
+                    SliderRow(
+                        icon = SfIcons.AutoAwesome,
+                        title = glassOpacityTitle,
+                        subtitle = stringResource(R.string.liquid_glass_opacity_subtitle),
+                        value = "%.0f%%".format(liquidGlassSurfaceOpacity * 100),
+                        sliderValue = liquidGlassSurfaceOpacity,
+                        onSliderValue = AppSettings::setLiquidGlassSurfaceOpacity,
+                        valueRange = 0f..1f,
+                        steps = 9,
                     )
                 }
             }

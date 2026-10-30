@@ -3,18 +3,17 @@
 <br/>
 <br/>
 
-<img src="Logo.png" alt="BitChord app icon" width="200" />
+<img src="Logo.png" alt="BitChord Ultra app icon" width="200" />
 
-# BitChord
+# BitChord Ultra
 
-### Aesthetic YouTube Music Client
+### Aesthetic YouTube Music Client — Ultra Edition
 
 <br/>
 
-[![Latest release](https://img.shields.io/github/v/release/kushagrasinghx/BitChord?style=for-the-badge&labelColor=0d1117)](https://github.com/kushagrasinghx/BitChord/releases)
-[![License](https://img.shields.io/github/license/kushagrasinghx/BitChord?style=for-the-badge&labelColor=0d1117)](https://github.com/kushagrasinghx/BitChord/blob/main/LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/kushagrasinghx/BitChord/total?style=for-the-badge&labelColor=0d1117)](https://github.com/kushagrasinghx/BitChord/releases)
-[![Listening now](https://api.bitchord.kushagrasingh.in/api/stats/live/badge.svg)](https://api.bitchord.kushagrasingh.in/api/stats/live)
+[![Latest release](https://img.shields.io/github/v/release/LinuxKernel44/BitChord-Ultra?style=for-the-badge&labelColor=0d1117)](https://github.com/LinuxKernel44/BitChord-Ultra/releases)
+[![License](https://img.shields.io/github/license/LinuxKernel44/BitChord-Ultra?style=for-the-badge&labelColor=0d1117)](https://github.com/LinuxKernel44/BitChord-Ultra/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/LinuxKernel44/BitChord-Ultra/total?style=for-the-badge&labelColor=0d1117)](https://github.com/LinuxKernel44/BitChord-Ultra/releases)
 
 <br/>
 
@@ -28,7 +27,11 @@
 </div>
 
 > [!IMPORTANT]
-> BitChord is not affiliated with, endorsed by, or connected to YouTube or Google in any way. Use it at your own discretion.
+> BitChord Ultra is a community fork of [BitChord](https://github.com/kushagrasinghx/BitChord) by kushagrasinghx, maintained independently. It is not affiliated with, endorsed by, or connected to YouTube, Google, or upstream BitChord in any way. Use it at your own discretion.
+
+#### What's different in Ultra
+- **Liquid Glass Ultra settings** — the frosted/liquid-glass material's blur radius, vibrancy, lens strength and surface opacity are now sliders in Settings instead of a single on/off switch.
+- **Higher audio ceilings** — the "Low" data-saver rung now budgets more headroom, and quality is exposed with clearer manual control over the Wi-Fi/mobile split.
 
 ---
 
@@ -89,9 +92,9 @@
 
 <h1><a id="download"></a>Download</h1>
 
-<a href="https://github.com/kushagrasinghx/BitChord/releases" target="_blank" rel="noopener noreferrer"><img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/supported/android/cozy.svg" alt="Download for Android" height="55"/></a>
+<a href="https://github.com/LinuxKernel44/BitChord-Ultra/releases" target="_blank" rel="noopener noreferrer"><img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/supported/android/cozy.svg" alt="Download for Android" height="55"/></a>
 
-Grab the latest signed APK from the [Releases](https://github.com/kushagrasinghx/BitChord/releases) page. Sideloading requires enabling "Install unknown apps" for whichever app you download it with.
+Grab the latest signed APK from the [Releases](https://github.com/LinuxKernel44/BitChord-Ultra/releases) page. Sideloading requires enabling "Install unknown apps" for whichever app you download it with.
 
 
 </div>
@@ -108,7 +111,7 @@ We welcome contributions to BitChord! Please review our [Contributing Guide](CON
 
 ### Thanks to all contributors ❤
 
-<a href="https://github.com/kushagrasinghx/BitChord/graphs/contributors">
+<a href="https://github.com/LinuxKernel44/BitChord-Ultra/graphs/contributors">
   <img src="https://raw.githubusercontent.com/kushagrasinghx/BitChord/contributors/contributors.svg" />
 </a>
 
