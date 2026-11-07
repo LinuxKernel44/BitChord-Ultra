@@ -86,6 +86,15 @@ private const val SURFACE_OPACITY = 0.4f
 // a transparent backdrop, not the resample (see MainActivity's `paintBackdrop`).
 
 /**
+ * The blur and resolution under [AppSettings.glassPerformance]. With no lens to
+ * bend what is behind it, the frost alone has to break up a page's text, so it
+ * is twice the radius — and that wider blur hides a smaller recording, which
+ * takes the surface from about 11% of its pixels to about 6%.
+ */
+private const val FROST_BLUR_RADIUS_DP = 16f
+private const val FROST_RESOLUTION_SCALE = 0.25f
+
+/**
  * The hairline along a bar's edge, and what stands in for the glass rim
  * wherever the glass itself is not drawn.
  *
@@ -200,6 +209,10 @@ fun Modifier.liquidGlassRim(shape: CornerBasedShape): Modifier {
  * recording the backdrop layer when it is on, and a surface that still tried to
  * sample would be sampling a layer nothing is drawing into.
  *
+ * Under [AppSettings.glassPerformance] the lens goes and the blur frosts instead,
+ * for phones that can't spare the refraction shader. The vibrancy, tint, rim and
+ * shadow are the same either way.
+ *
  * [shape] is restricted to [CornerBasedShape] because the backdrop's lens effect
  * throws for any other shape type.
  */
@@ -215,6 +228,7 @@ fun Modifier.liquidGlass(
         return background(MaterialTheme.colorScheme.surface, shape)
             .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, shape)
     }
+    val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
     val backdrop = LocalAppBackdrop.current
     val exportedBackdrop = LocalGlassExport.current
     val density = LocalDensity.current
@@ -222,8 +236,11 @@ fun Modifier.liquidGlass(
     val vibrancy by AppSettings.liquidGlassVibrancy.collectAsStateWithLifecycle()
     val lensAmount by AppSettings.liquidGlassLensAmount.collectAsStateWithLifecycle()
     val surfaceOpacity by AppSettings.liquidGlassSurfaceOpacity.collectAsStateWithLifecycle()
-    val resolutionScale by AppSettings.liquidGlassResolutionScale.collectAsStateWithLifecycle()
-    val blurPx = with(density) { blurDp.dp.toPx() } * resolutionScale
+    val userResolutionScale by AppSettings.liquidGlassResolutionScale.collectAsStateWithLifecycle()
+    // Upstream's performance mode (frost only) overrides the Ultra sliders.
+    val resolutionScale = if (glassPerformance) FROST_RESOLUTION_SCALE else userResolutionScale
+    val blurRadiusDp = if (glassPerformance) FROST_BLUR_RADIUS_DP else blurDp
+    val blurPx = with(density) { blurRadiusDp.dp.toPx() } * resolutionScale
     val lensHeightPx = with(density) { (LENS_HEIGHT * LENS_MAX_DP).dp.toPx() } * resolutionScale
     val lensAmountPx = with(density) { (lensAmount * LENS_MAX_DP).dp.toPx() } * resolutionScale
     val themeTint = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) {
@@ -239,7 +256,7 @@ fun Modifier.liquidGlass(
         effects = {
             colorControls(saturation = 1f + 0.5f * vibrancy)
             blur(blurPx)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!glassPerformance && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 lens(
                     refractionHeight = lensHeightPx,
                     refractionAmount = lensAmountPx,
