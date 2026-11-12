@@ -54,6 +54,7 @@ import com.music.bitchord.data.model.withoutRepeatsOf
 import com.music.bitchord.data.model.LibraryPage
 import com.music.bitchord.data.model.LibraryState
 import com.music.bitchord.data.model.LikeStatus
+import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.MoodGenre
 import com.music.bitchord.data.model.MoodGenreSection
 import com.music.bitchord.data.model.PlaylistPrivacy
@@ -97,6 +98,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import com.music.bitchord.data.sources.AddonSource
+import com.music.bitchord.data.sources.EclipseIds
+import com.music.bitchord.data.sources.EclipseSource
+import com.music.bitchord.data.sources.eclipse.EclipseContent
+import com.music.bitchord.data.sources.eclipse.EclipseItem
 import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.data.sources.SourceResolver
@@ -239,6 +244,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      */
     private val _addonResults = MutableStateFlow<UiState<List<Song>>?>(null)
     val addonResults: StateFlow<UiState<List<Song>>?> = _addonResults.asStateFlow()
+
+    /** Albums, artists and playlists from Eclipse addons for the submitted Addons query. */
+    private val _addonBrowse = MutableStateFlow<List<BrowseItem>>(emptyList())
+    val addonBrowse: StateFlow<List<BrowseItem>> = _addonBrowse.asStateFlow()
     private var addonSearchJob: Job? = null
 
     /** The words typed into the Addons search before, newest first. */
@@ -1629,15 +1638,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun fetchExplore() {
+        val eclipse = eclipseExploreSections()
         val state = YtMusicRepository.moodAndGenres().fold(
             onSuccess = { sections ->
-                if (sections.isEmpty()) {
+                if (sections.isEmpty() && eclipse.isEmpty()) {
                     UiState.Error(text(R.string.nothing_to_explore))
                 } else {
-                    UiState.Success(sections)
+                    UiState.Success(sections + eclipse)
                 }
             },
-            onFailure = { UiState.Error(it.friendly()) },
+            onFailure = {
+                if (eclipse.isNotEmpty()) UiState.Success(eclipse) else UiState.Error(it.friendly())
+            },
         )
         _explore.value = state
         (state as? UiState.Success)?.data?.let(::loadMoodGenreArtwork)
@@ -1652,7 +1664,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val limiter = Semaphore(4)
             coroutineScope {
-                sections.flatMap(MoodGenreSection::items).forEach { item ->
+                sections.flatMap(MoodGenreSection::items)
+                    .filterNot { EclipseIds.isEclipse(it.browseId) }
+                    .forEach { item ->
                     launch {
                         val artwork = limiter.withPermit {
                             YtMusicRepository.moodGenreArtwork(item.browseId, item.params).getOrNull()
@@ -1676,6 +1690,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun openMoodGenre(item: MoodGenre) {
         _selectedMoodGenre.value = item
         _moodGenreShelves.value = UiState.Loading
+        if (EclipseIds.isEclipse(item.browseId)) {
+            viewModelScope.launch { _moodGenreShelves.value = eclipseRowShelves(item.browseId) }
+            return
+        }
         viewModelScope.launch {
             _moodGenreShelves.value = YtMusicRepository.moodGenreShelves(item.browseId, item.params).fold(
                 onSuccess = { shelves ->
@@ -1744,6 +1762,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         }
                 }
             }
+            loadEclipseShelves { isCurrentHomeLoad(identity, generation) }
             YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.forEach { browseId ->
                 launch {
                     try {
@@ -1888,6 +1907,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val shelves = feed.shelves.withoutRepeatsOf(emptyList())
                 .filter { homeSeenTitles.add(it.title.lowercase(Locale.ROOT)) }
             if (shelves.isNotEmpty()) _home.value = UiState.Success(shelves)
+            loadEclipseShelves { identity == listenerKey() }
         }
         recent?.await()?.onSuccess { shelf ->
             if (identity == listenerKey()) shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
@@ -2171,13 +2191,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // Every enabled addon, including ones the connection's quality setting
         // skips for playback: their rows are still worth seeing, and the
         // search page dims them and says why on a tap — see `isBlocked` there.
-        val addons = SourceRegistry.active().filterIsInstance<AddonSource>()
+        val addons = SourceRegistry.active().filter { it is AddonSource || it is EclipseSource }
         if (addons.isEmpty()) {
             _addonResults.value = UiState.Error(text(R.string.search_addons_none))
+            _addonBrowse.value = emptyList()
             return
         }
         _addonResults.value = UiState.Loading
+        _addonBrowse.value = emptyList()
+        val eclipse = addons.filterIsInstance<EclipseSource>()
         addonSearchJob = viewModelScope.launch {
+            // Eclipse's albums, artists and playlists, alongside the tracks. The
+            // same /search call as the tracks' (the client shares it), so this
+            // costs no second request.
+            launch {
+                val browse = coroutineScope {
+                    eclipse.map { source ->
+                        async {
+                            withTimeoutOrNull(ADDON_SEARCH_TIMEOUT_MS) {
+                                source.searchEverything(q).getOrNull()?.let { EclipseContent.browseItems(source, it) }
+                            }.orEmpty()
+                        }
+                    }.map { it.await() }
+                }
+                _addonBrowse.value = browse.flatten()
+            }
             val perAddon = coroutineScope {
                 addons.map { addon ->
                     async {
@@ -2574,6 +2612,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val TOP_PICKS_FILE = "top_picks_v4.json"
 
         /** Per-addon budget for the Addons search tab; a slow addon is left out, not waited on. */
+        private const val ECLIPSE_ROWS_PER_ADDON = 8
         private const val ADDON_SEARCH_TIMEOUT_MS = 12_000L
         private const val ADDON_SEARCH_LIMIT = 20
 
@@ -2650,6 +2689,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     ?.takeIf { !it.playlist }
                     ?.let { BrowseType.ALBUM }
                     ?: BrowseType.PLAYLIST
+            EclipseIds.isEclipse(browseId) -> when (EclipseIds.parse(browseId)?.type) {
+                EclipseIds.ARTIST -> BrowseType.ARTIST
+                EclipseIds.ALBUM -> BrowseType.ALBUM
+                else -> BrowseType.PLAYLIST
+            }
             browseId.startsWith(LocalGroups.PREFIX) -> LocalGroups.typeOf(browseId) ?: fallback
             browseId.startsWith(OfflinePlaylists.PREFIX) -> BrowseType.PLAYLIST
             browseId.startsWith("UC") -> BrowseType.ARTIST
@@ -2715,6 +2759,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         ) return
         if (browseId.startsWith(SPOTIFY_PAGE_PREFIX)) {
             openSpotifyPage(browseId, title, subtitle, thumbnailUrl)
+            return
+        }
+        if (EclipseIds.isEclipse(browseId)) {
+            openEclipsePage(browseId, title, subtitle, thumbnailUrl)
             return
         }
         val resolved = browseTypeOf(browseId, type)
@@ -2889,6 +2937,125 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * then arrive in order and swap the rows in place, so the page is usable
      * before the last song has been found.
      */
+    /**
+     * An Eclipse addon's album, artist, playlist or catalogue row, as a page of
+     * its own. The browse id says which addon and which page — see [EclipseIds].
+     */
+    private fun openEclipsePage(browseId: String, title: String, subtitle: String, thumbnailUrl: String?) {
+        val ref = EclipseIds.parse(browseId) ?: return
+        _detailStack.value += DetailPage(
+            browseId = browseId,
+            title = title,
+            subtitle = subtitle,
+            thumbnailUrl = thumbnailUrl,
+            songs = UiState.Loading,
+            type = browseTypeOf(browseId),
+        )
+        viewModelScope.launch {
+            fun update(change: (DetailPage) -> DetailPage) {
+                _detailStack.value = _detailStack.value.map { if (it.browseId == browseId) change(it) else it }
+            }
+            val source = SourceRegistry.instance(ref.configId) as? EclipseSource
+            if (source == null) {
+                update { it.copy(songs = UiState.Error(text(R.string.failed))) }
+                return@launch
+            }
+            val result: Result<EclipseContent.Page> = when (ref.type) {
+                EclipseIds.ALBUM -> source.album(ref.id).map { EclipseContent.albumPage(source, browseId, it) }
+                EclipseIds.ARTIST -> source.artist(ref.id).map { EclipseContent.artistPage(source, browseId, it) }
+                EclipseContent.CATALOG -> eclipseCatalogPage(source, ref.id)
+                else -> source.playlist(ref.id).map { EclipseContent.playlistPage(source, it) }
+            }
+            result.fold(
+                onSuccess = { page ->
+                    update {
+                        it.copy(
+                            title = page.title.ifBlank { it.title },
+                            subtitle = page.subtitle.ifBlank { it.subtitle },
+                            thumbnailUrl = page.thumbnailUrl ?: it.thumbnailUrl,
+                            description = page.description,
+                            sections = page.sections,
+                            songs = if (page.songs.isEmpty() && page.sections.isEmpty()) {
+                                UiState.Error(text(R.string.nothing_to_explore))
+                            } else {
+                                UiState.Success(page.songs)
+                            },
+                        )
+                    }
+                },
+                onFailure = { failure -> update { it.copy(songs = UiState.Error(failure.friendly())) } },
+            )
+        }
+    }
+
+    /** A whole catalogue row: pages of 100 until a short one, up to [EclipseContent.MAX_PAGES]. */
+    private suspend fun eclipseCatalogPage(source: EclipseSource, rowId: String): Result<EclipseContent.Page> {
+        val row = source.manifest().getOrNull()?.catalogs?.firstOrNull { it.id == rowId }
+        val items = mutableListOf<EclipseItem>()
+        for (page in 0 until EclipseContent.MAX_PAGES) {
+            val chunk = source.catalog(rowId, page * EclipseContent.PAGE_SIZE).getOrElse { failure ->
+                if (items.isEmpty()) return Result.failure(failure)
+                break
+            }
+            items += chunk
+            if (chunk.size < EclipseContent.PAGE_SIZE) break
+        }
+        return Result.success(EclipseContent.catalogPage(source, row, items))
+    }
+
+    /**
+     * Eclipse catalogue rows, published into Home as they arrive. A slow or
+     * failing addon costs only its own rows. [isCurrent] drops answers for a
+     * Home load that has since been replaced.
+     */
+    private fun loadEclipseShelves(isCurrent: () -> Boolean) {
+        viewModelScope.launch {
+            SourceRegistry.eclipseSources().forEach { source ->
+                launch {
+                    val rows = withTimeoutOrNull(ADDON_SEARCH_TIMEOUT_MS) { source.manifest().getOrNull()?.rows }
+                        .orEmpty().take(ECLIPSE_ROWS_PER_ADDON)
+                    rows.forEach { row ->
+                        launch {
+                            val items = withTimeoutOrNull(ADDON_SEARCH_TIMEOUT_MS) { source.catalog(row.id, 0).getOrNull() }
+                                ?: return@launch
+                            if (!isCurrent()) return@launch
+                            // At the head of Home and not the tail: a listener who added an
+                            // addon wants its rows where they can be seen, and the tail
+                            // is wherever the YouTube feed's pagination has got to.
+                            EclipseContent.shelf(source, row, items)?.let { publishHomeShelves(listOf(it), prepend = true) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** One Explore section per Eclipse addon that offers catalogue rows. */
+    private suspend fun eclipseExploreSections(): List<MoodGenreSection> = coroutineScope {
+        SourceRegistry.eclipseSources().map { source ->
+            async {
+                val rows = withTimeoutOrNull(ADDON_SEARCH_TIMEOUT_MS) { source.manifest().getOrNull()?.rows }.orEmpty()
+                EclipseContent.exploreSection(source, rows)
+            }
+        }.map { it.await() }.filterNotNull()
+    }
+
+    /** The shelf an Eclipse Explore button opens. */
+    private suspend fun eclipseRowShelves(browseId: String): UiState<List<HomeShelf>> {
+        val ref = EclipseIds.parse(browseId) ?: return UiState.Error(text(R.string.nothing_to_explore))
+        val source = SourceRegistry.instance(ref.configId) as? EclipseSource
+            ?: return UiState.Error(text(R.string.nothing_to_explore))
+        val row = source.manifest().getOrNull()?.catalogs?.firstOrNull { it.id == ref.id }
+            ?: return UiState.Error(text(R.string.nothing_to_explore))
+        return source.catalog(ref.id, 0).fold(
+            onSuccess = { items ->
+                EclipseContent.shelf(source, row, items)?.let { UiState.Success(listOf(it)) }
+                    ?: UiState.Error(text(R.string.nothing_to_explore))
+            },
+            onFailure = { UiState.Error(it.friendly()) },
+        )
+    }
+
     private fun openSpotifyPage(browseId: String, title: String, subtitle: String, thumbnailUrl: String?) {
         _detailStack.value += DetailPage(
             browseId = browseId,

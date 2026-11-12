@@ -45,8 +45,8 @@ buildscript {
 // distinct app install as far as Android is concerned, so its own version
 // history restarts at 1.0.0 / versionCode 1 rather than continuing
 // upstream's.
-extra["bitchordVersionCode"] = 3
-extra["bitchordVersionName"] = "1.2.0"
+extra["bitchordVersionCode"] = 4
+extra["bitchordVersionName"] = "1.3.0"
 
 /*
  * Bump this by hand before cutting each sideloaded test build ("beta2",

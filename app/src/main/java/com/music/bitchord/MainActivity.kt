@@ -904,6 +904,7 @@ private fun BitChordApp(
     val searchSource by viewModel.searchSource.collectAsStateWithLifecycle()
     val libraryResults by viewModel.libraryResults.collectAsStateWithLifecycle()
     val addonResults by viewModel.addonResults.collectAsStateWithLifecycle()
+    val addonBrowse by viewModel.addonBrowse.collectAsStateWithLifecycle()
     // Collected rather than read once, so addon rows in search re-dim the
     // moment the quality setting, the connection or the watch's cap moves.
     val addonCeiling = AppSettings.ceilingFor(
@@ -3633,6 +3634,7 @@ private fun BitChordApp(
                                 libraryResults = libraryResults,
                                 searchingAddons = searchSource == SearchSource.ADDONS,
                                 addonResults = addonResults,
+                                addonBrowse = addonBrowse,
                                 isBlocked = { song ->
                                     val configId = SourceRegistry.parseTrackKey(song.videoId)?.first
                                     !SourceRegistry.permitsForPlayback(configId, addonCeiling)

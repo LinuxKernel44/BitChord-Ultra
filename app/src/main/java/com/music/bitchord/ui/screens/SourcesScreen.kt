@@ -74,6 +74,7 @@ import com.music.bitchord.data.smb.SmbRepository
 import com.music.bitchord.data.webdav.WebDavRepository
 import com.music.bitchord.data.settings.AudioQuality
 import com.music.bitchord.data.sources.AddonSource
+import com.music.bitchord.data.sources.EclipseSource
 import com.music.bitchord.data.sources.SourceConfig
 import com.music.bitchord.data.sources.SourceHealth
 import com.music.bitchord.data.sources.SourceKind
@@ -171,8 +172,16 @@ fun SourcesScreen(
             // equal and writes nothing, so there is no loop between this and
             // the [configs] it is reading. A rename on the addon's side is
             // picked up the next time this screen is opened.
-            if (source is AddonSource) {
-                val named = withContext(Dispatchers.IO) { runCatching { source.manifestName() }.getOrNull() }
+            if (source is AddonSource || source is EclipseSource) {
+                val named = withContext(Dispatchers.IO) {
+                    runCatching {
+                        if (source is EclipseSource) {
+                            source.manifest().getOrNull()?.displayName?.ifBlank { null }
+                        } else {
+                            (source as AddonSource).manifestName()
+                        }
+                    }.getOrNull()
+                }
                 if (named != null && named != config.label) {
                     // Off the stored config, not the one this pass started with:
                     // the probe above may have just refreshed it, and the user

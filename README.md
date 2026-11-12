@@ -31,6 +31,7 @@
 
 #### What's different in Ultra
 - **Liquid Glass Ultra settings** — the frosted/liquid-glass material's blur radius, vibrancy, lens strength and surface opacity are now sliders in Settings instead of a single on/off switch.
+- **Eclipse addon support** — a second "Add an Eclipse addon" button on the Sources screen speaks the full [Eclipse Music addon protocol](https://eclipsemusic.app/docs): search, `/resolve-isrc` and `/resolve` exact matching ahead of the search fallback, streams (including HLS/DASH, with downloads), albums, artists and playlists as native pages, catalogue rows on Home and Explore, a settings form drawn from the manifest (select, toggle, text, number, per-network Wi-Fi/mobile values) and addon notices (including the "preparing this song" 503 flow). Encrypted streams are skipped. Plain HTTP is accepted only for `localhost`, `127.0.0.1` and `10.0.2.2`, for developing an addon.
 - **Higher audio ceilings** — the "Low" data-saver rung now budgets more headroom, and quality is exposed with clearer manual control over the Wi-Fi/mobile split.
 
 ---

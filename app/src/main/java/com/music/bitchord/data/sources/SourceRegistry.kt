@@ -398,9 +398,10 @@ object SourceRegistry {
      * duplicate work already on the wire.
      */
     fun clearCompletedAddonTrackCalls() {
-        instances.values
-            .filterIsInstance<AddonSource>()
-            .forEach(AddonSource::clearCompletedTrackCalls)
+        instances.values.forEach {
+            (it as? AddonSource)?.clearCompletedTrackCalls()
+            (it as? EclipseSource)?.clearCompletedTrackCalls()
+        }
     }
 
     // ── Editing ─────────────────────────────────────────────────────────

@@ -147,6 +147,8 @@ fun SearchScreen(
     searchingAddons: Boolean = false,
     /** The Addons source's tracks for the submitted query; null until one is submitted. */
     addonResults: UiState<List<Song>>? = null,
+    /** Albums, artists and playlists the Eclipse addons returned for the same query; shown above the tracks. */
+    addonBrowse: List<BrowseItem> = emptyList(),
     /**
      * Addon rows the connection's quality setting won't play. Shown dimmed,
      * kept out of the queue a tap builds, and answered by [onBlockedSongClick]
@@ -267,6 +269,8 @@ fun SearchScreen(
                 searchingLibrary || searchingAddons -> librarySearchResults(
                     query = query.trim(),
                     results = if (searchingAddons) addonResults else libraryResults,
+                    browse = if (searchingAddons) addonBrowse else emptyList(),
+                    onBrowseClick = onBrowseClick,
                     addons = searchingAddons,
                     addonHistory = addonHistory,
                     onAddonHistoryClick = onAddonHistoryClick,
@@ -434,6 +438,8 @@ private fun searchSections(rows: List<SearchResult>, filter: SearchFilter): List
 private fun LazyListScope.librarySearchResults(
     query: String,
     results: UiState<List<Song>>?,
+    browse: List<BrowseItem>,
+    onBrowseClick: (BrowseItem) -> Unit,
     addons: Boolean,
     addonHistory: List<String>,
     onAddonHistoryClick: (String) -> Unit,
@@ -457,7 +463,7 @@ private fun LazyListScope.librarySearchResults(
         }
         UiState.Loading -> songListSkeleton(keyPrefix = "skeleton:search:library")
         is UiState.Error -> item(key = "library:error") { MessageState(results.message) }
-        is UiState.Success -> if (results.data.isEmpty()) {
+        is UiState.Success -> if (results.data.isEmpty() && browse.isEmpty()) {
             item(key = "library:no-match") {
                 MessageState(
                     if (addons) {
@@ -470,6 +476,17 @@ private fun LazyListScope.librarySearchResults(
         } else {
             val tracks = results.data
             val isCurrentRow = playingRowMatcher(tracks, currentSong)
+            // An Eclipse addon's own albums, artists and playlists, above the tracks.
+            itemsIndexed(browse, key = { index, item -> "addon_browse_${item.browseId}_$index" }) { index, item ->
+                BrowseRow(item = item, onClick = { onBrowseClick(item) })
+                if (index < browse.lastIndex || tracks.isNotEmpty()) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = ROW_DIVIDER_INSET),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
             itemsIndexed(tracks, key = { index, song -> "${if (addons) "addon" else "library"}_${song.videoId}_$index" }) { index, song ->
                 val blocked = isBlocked(song)
                 SongRow(
