@@ -290,9 +290,8 @@ object SourceResolver {
         // is another recording and can be a wrong song altogether.
         if (target.title.isBlank() || target.isVideo) return null
         val active = SourceRegistry.activeForPlayback()
-        val youtube = active.firstOrNull { it.kind == SourceKind.YOUTUBE } ?: return null
         val request = requestForNow()
-        val (source, stream) = bestAcross(rankedAbove(youtube.configId, active), target, request)
+        val (source, stream) = bestAcross(aboveYouTube(active), target, request)
             ?: return null
         // Says what was found, not what the caller will do with it. This
         // line used to read "substituted" unconditionally, including for
@@ -317,9 +316,7 @@ object SourceResolver {
      * exists to prevent.
      */
     fun directAddons(): List<MusicSource> {
-        val active = SourceRegistry.activeForPlayback()
-        val youtube = active.firstOrNull { it.kind == SourceKind.YOUTUBE } ?: return emptyList()
-        return rankedAbove(youtube.configId, active).filter { it.kind == SourceKind.ADDON }
+        return aboveYouTube(SourceRegistry.activeForPlayback()).filter { it.kind == SourceKind.ADDON }
     }
 
     /**
@@ -447,9 +444,7 @@ object SourceResolver {
      */
     suspend fun prefetchSubstitute(target: TrackMatcher.Target): SourceStream? {
         if (target.title.isBlank() || target.isVideo) return null
-        val active = SourceRegistry.activeForPlayback()
-        val youtube = active.firstOrNull { it.kind == SourceKind.YOUTUBE } ?: return null
-        val quick = rankedAbove(youtube.configId, active).filter { it.kind.worthPrefetching }
+        val quick = aboveYouTube(SourceRegistry.activeForPlayback()).filter { it.kind.worthPrefetching }
         if (quick.isEmpty()) return null
         val (source, stream) = bestAcross(quick, target, requestForNow()) ?: return null
         TrackLog.d(
@@ -518,7 +513,6 @@ object SourceResolver {
         if (target.title.isBlank() || target.durationSec == null || target.isVideo) return null
         val request = requestForNow()
         val active = SourceRegistry.activeForPlayback()
-        val youtube = active.firstOrNull { it.kind == SourceKind.YOUTUBE } ?: return null
         // Every source gets asked, whether or not it can serve lossless, and
         // they are asked at once.
         //
@@ -548,7 +542,7 @@ object SourceResolver {
         // and the seam then landed mid-song rather than near its start. Raced,
         // the same swap happens inside a second.
         val (source, chosen) = bestAcross(
-            rankedAbove(youtube.configId, active).filterNot { it.configId == servedBy },
+            aboveYouTube(active).filterNot { it.configId == servedBy },
             target,
             request,
             waitForAll = true,
@@ -927,8 +921,20 @@ object SourceResolver {
      * [AudioCache][com.music.bitchord.playback.AudioCache] decide how to treat
      * a YouTube id before anyone has asked a source for it.
      */
-    fun canSubstituteForYouTube(): Boolean =
-        SourceRegistry.activeForPlayback().indexOfFirst { it.kind == SourceKind.YOUTUBE } > 0
+    fun canSubstituteForYouTube(): Boolean {
+        val active = SourceRegistry.activeForPlayback()
+        val youtubeAt = active.indexOfFirst { it.kind == SourceKind.YOUTUBE }
+        // With YouTube switched off nothing is "below" it: whatever is enabled outranks it.
+        return if (youtubeAt < 0) active.isNotEmpty() else youtubeAt > 0
+    }
+
+    /**
+     * The sources to try *instead of* YouTube for a YouTube-queued track: those
+     * ranked above it — or, with YouTube switched off, every enabled one, since
+     * none of them is ranked below something that is not there.
+     */
+    private fun aboveYouTube(active: List<MusicSource>): List<MusicSource> =
+        rankedAbove(active.firstOrNull { it.kind == SourceKind.YOUTUBE }?.configId.orEmpty(), active)
 
     /**
      * The sources ranked above [configId], in order.

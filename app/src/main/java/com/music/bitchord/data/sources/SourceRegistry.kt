@@ -8,6 +8,7 @@ import com.music.bitchord.auth.EncryptedPrefs
 import com.music.bitchord.data.TrackLog
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.permits
+import com.music.bitchord.data.innertube.StreamResolver
 import com.music.bitchord.data.sources.addon.AddonAuth
 import com.music.bitchord.data.sources.addon.AddonClient
 import com.music.bitchord.data.sources.addon.AddonException
@@ -210,7 +211,6 @@ object SourceRegistry {
             .filterNot { it.kind == SourceKind.MODULE }
             .map { config ->
                 when {
-                    config.kind == SourceKind.YOUTUBE && !config.enabled -> config.copy(enabled = true)
                     config.kind == SourceKind.JIOSAAVN && forceJioSaavnOff -> config.copy(enabled = false)
                     else -> config
                 }
@@ -369,8 +369,20 @@ object SourceRegistry {
      */
     fun activeForPlayback(): List<MusicSource> {
         val ceiling = AppSettings.effectiveAudioQuality
+        // The ceilings below Lossless are written in terms of YouTube — "only
+        // YouTube is reached on Medium or Low". With YouTube off that would
+        // leave nothing to play from at all, so the ceiling then limits what is
+        // *asked for* (a capped request, see [SourceResolver.requestForNow])
+        // and no longer which sources may be asked.
+        if (!youtubeEnabled()) return active()
         return active().filter { ceiling.permits(it.kind) }
     }
+
+    /**
+     * Whether YouTube Music is a source of audio. Absent counts as on, which is
+     * what a fresh install and every install before this switch existed have.
+     */
+    fun youtubeEnabled(): Boolean = configs.value.none { it.kind == SourceKind.YOUTUBE && !it.enabled }
 
     /**
      * Whether a stream [configId] served may still be played under the ceiling
@@ -385,12 +397,23 @@ object SourceRegistry {
         ceiling: AudioQuality = AppSettings.effectiveAudioQuality,
     ): Boolean {
         val kind = configId?.let { config(it)?.kind } ?: return true
+        if (!youtubeEnabled()) return true
         return ceiling.permits(kind)
     }
 
     fun instance(configId: String): MusicSource? = instances[configId]
 
     fun config(configId: String): SourceConfig? = configs.value.firstOrNull { it.id == configId }
+
+    private val noSource = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    /** Records that [mediaId] could not play because no enabled source has it and YouTube is off. */
+    fun noSourceFor(mediaId: String) {
+        if (noSource.size > 64) noSource.clear()
+        noSource += mediaId
+    }
+
+    fun isNoSource(mediaId: String?): Boolean = mediaId != null && mediaId in noSource
 
     /** Every enabled Eclipse addon, in the user's order. For Home rows, search and detail pages. */
     fun eclipseSources(): List<EclipseSource> = active().filterIsInstance<EclipseSource>()
@@ -448,16 +471,12 @@ object SourceRegistry {
     /**
      * Turns one source on or off.
      *
-     * YouTube is not switchable and silently ignores a request to disable it.
-     * It is the only source that can supply a home feed, radio or related
-     * tracks, and nothing else holds the full catalogue — switching it off
-     * doesn't even stop it being played, because a YouTube-queued track whose
-     * substitutes all miss still falls back to it. A switch that cannot honour
-     * its own off position is worse than no switch, so it isn't offered one:
-     * see [SourcesScreen][com.music.bitchord.ui.screens.SourcesScreen].
+     * Ultra: YouTube can be switched off too. That removes it as a source of
+     * *audio* only — see [youtubeEnabled]. Home, Explore and search still read
+     * YouTube Music's catalogue, which is metadata and not a source in this
+     * list, so a YouTube-queued track then plays only if another source has it.
      */
     fun setEnabled(configId: String, enabled: Boolean) {
-        if (!enabled && config(configId)?.kind == SourceKind.YOUTUBE) return
         publish(configs.value.map { if (it.id == configId) it.copy(enabled = enabled) else it })
     }
 
@@ -490,6 +509,9 @@ object SourceRegistry {
 
     private fun publish(next: List<SourceConfig>, persist: Boolean = true) {
         configs.value = next
+        // Said to the YouTube stream resolver here, the one place every change
+        // to the list goes through, so it can never disagree with the switch.
+        StreamResolver.audioEnabled = next.none { it.kind == SourceKind.YOUTUBE && !it.enabled }
         // Rebuilt against the previous map so that an untouched source keeps
         // the instance it already had, rather than being replaced by an
         // identical-but-cold one every time an unrelated row is toggled.

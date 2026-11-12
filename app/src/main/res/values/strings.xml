@@ -465,6 +465,8 @@
     <string name="activity_playing">Playing</string>
     <string name="activity_watching">Watching</string>
     <string name="add_addon">Add an addon</string>
+    <string name="youtube_off_no_source">No enabled source has this track, and YouTube Music is turned off as a source.</string>
+    <string name="sources_youtube_off">YouTube Music is off as a source of audio. Home, Explore and search still show its catalogue, but a track plays only if another source has it — otherwise it stays on an error.</string>
     <string name="add_eclipse_addon">Add an Eclipse addon</string>
     <string name="add_eclipse_addon_detail">Eclipse Music addon: its search, albums, artists, playlists and catalogue rows</string>
     <string name="eclipse_url_description">Paste the Eclipse addon’s URL — its root, its manifest.json, or a token link. BitChord reads its manifest and uses it to search, resolve and stream, and shows its albums, artists, playlists and catalogue rows. If the addon answers “HTTP 403”, it may refuse clients by name: you can type the User-Agent to send to it below.</string>

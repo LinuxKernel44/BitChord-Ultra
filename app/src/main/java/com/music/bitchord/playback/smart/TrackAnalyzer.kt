@@ -38,6 +38,7 @@ import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.AutomixPerformanceMode
+import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.data.sources.SourceResolver
 import com.music.bitchord.data.sources.TrackMatcher
 import com.music.bitchord.playback.AudioCache
@@ -886,6 +887,8 @@ class TrackAnalyzer(private val context: Context, private val cache: AudioCache)
         // point is not being YouTube. Left unmeasured, as a party leaves every
         // track — see [SourceResolver.MIX_PARAM].
         if (SourceResolver.isPickedAddonRow(playbackUri)) return null
+        // Nor with YouTube Music switched off as a source: its Opus is a YouTube stream.
+        if (!SourceRegistry.youtubeEnabled()) return null
         sourceAnalysisUris[trackId]?.let { return it }
         if (trackId in sourceResolutionAttempted) return null
         if (!sourceResolutions.add(trackId)) return null

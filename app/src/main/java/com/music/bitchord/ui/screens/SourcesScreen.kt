@@ -220,6 +220,10 @@ fun SourcesScreen(
             header = stringResource(R.string.sources_order_header),
             footer = buildString {
                 append(stringResource(R.string.sources_order_footer))
+                if (configs.any { it.kind == SourceKind.YOUTUBE && !it.enabled }) {
+                    append("\n\n")
+                    append(stringResource(R.string.sources_youtube_off))
+                }
                 if (cappedByQuality) {
                     append("\n\n")
                     append(stringResource(R.string.sources_quality_capped))
@@ -255,7 +259,10 @@ fun SourcesScreen(
                         // switch keeps meaning "I want this source" and the
                         // connection keeps meaning "…and here is what it costs
                         // today".
-                        skippedByQuality = config.enabled && !ceiling.permits(config.kind),
+                        // With YouTube off the ceilings no longer filter sources — see
+                        // [SourceRegistry.activeForPlayback].
+                        skippedByQuality = config.enabled && SourceRegistry.youtubeEnabled() &&
+                            !ceiling.permits(config.kind),
                         awaitingOutput = if (config.enabled && config.awaitsLosslessOutput) losslessOutput else null,
                         // Read off the stored manifest, so it shows before the
                         // probe below answers, and on a server that is down.
@@ -269,18 +276,14 @@ fun SourcesScreen(
                         onChooseQuality = { onChooseSourceQuality(config) },
                         onOpenEclipseSettings = { onEditEclipseSettings(config) },
                         onExplainOutdated = { onExplainOutdatedAddon(config) },
-                        // YouTube gets no switch at all — see
-                        // [SourceRegistry.setEnabled] for why one would be a lie.
-                        onToggle = if (config.kind == SourceKind.YOUTUBE) {
-                            null
-                        } else {
-                            ({ enabled ->
-                                if (config.kind == SourceKind.JIOSAAVN && enabled && !config.enabled) {
-                                    onConfirmJioSaavn()
-                                } else {
-                                    SourceRegistry.setEnabled(config.id, enabled)
-                                }
-                            })
+                        // Ultra: YouTube has a switch like the rest. Off means it is
+                        // not used to play audio — see [SourceRegistry.setEnabled].
+                        onToggle = { enabled ->
+                            if (config.kind == SourceKind.JIOSAAVN && enabled && !config.enabled) {
+                                onConfirmJioSaavn()
+                            } else {
+                                SourceRegistry.setEnabled(config.id, enabled)
+                            }
                         },
                         handle = handle,
                     )

@@ -792,6 +792,8 @@
 
     <string name="add_addon">Ajouter une extension</string>
 
+    <string name="youtube_off_no_source">Aucune source activée n\'a ce titre, et YouTube Music est désactivé comme source.</string>
+    <string name="sources_youtube_off">YouTube Music est désactivé comme source audio. Home, Explorer et la recherche affichent toujours son catalogue, mais un titre ne se lit que si une autre source l\'a — sinon il reste en erreur.</string>
     <string name="add_eclipse_addon">Ajouter une extension Eclipse</string>
     <string name="add_eclipse_addon_detail">Extension Eclipse Music : recherche, albums, artistes, playlists et rangées de catalogue</string>
     <string name="eclipse_url_description">Collez l\'URL de l\'extension Eclipse — racine, manifest.json ou lien à jeton. BitChord lit son manifeste pour rechercher, résoudre et diffuser, et affiche ses albums, artistes, playlists et rangées de catalogue. Si l\'extension répond « HTTP 403 », elle refuse peut-être certains clients par leur nom : vous pouvez saisir ci-dessous le User-Agent à lui envoyer.</string>

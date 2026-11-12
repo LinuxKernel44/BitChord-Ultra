@@ -31,6 +31,7 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.data.sources.SourceRegistry
+import com.music.bitchord.R
 import com.music.bitchord.data.sources.SourceResolver
 import com.music.bitchord.data.sources.TrackMatcher
 import com.music.bitchord.download.Downloads
@@ -301,6 +302,7 @@ fun MediaController.setQueueDragActive(active: Boolean) {
 /** Mirrors the controller into Compose state, polling position while playing. */
 @Composable
 fun rememberPlayerState(controller: MediaController?): PlayerState {
+    val appContext = LocalContext.current.applicationContext
     val position = remember { PlaybackPosition() }
     var state by remember { mutableStateOf(PlayerState(position = position)) }
 
@@ -406,7 +408,18 @@ fun rememberPlayerState(controller: MediaController?): PlayerState {
                 refreshCurrentQueueItem = events.contains(Player.EVENT_MEDIA_METADATA_CHANGED),
             )
             override fun onPlayerErrorChanged(error: androidx.media3.common.PlaybackException?) {
-                sync(error?.let { "Playback failed: ${it.errorCodeName}" })
+                sync(
+                    error?.let {
+                        // Said plainly when the cause is the listener's own setting. The
+                        // service marks the track before this is reported; the cause
+                        // itself does not survive the trip to the controller.
+                        if (SourceRegistry.isNoSource(player.currentMediaItem?.mediaId)) {
+                            appContext.getString(R.string.youtube_off_no_source)
+                        } else {
+                            "Playback failed: ${it.errorCodeName}"
+                        }
+                    },
+                )
             }
         }
         player.addListener(listener)
@@ -689,7 +702,7 @@ fun Song.toMediaItem(): MediaItem {
         // this song too: another play from a list, a restored queue, Android
         // Auto. Everything downstream reads the item's URI and nothing reads
         // the preference, so this is the only place it has to be said.
-        OriginalVersion.isPinned(videoId) -> directYouTubeUri()
+        OriginalVersion.isPinned(videoId) && SourceRegistry.youtubeEnabled() -> directYouTubeUri()
         // The same three fields, for the same reason, on the YouTube path: a
         // source ranked above YouTube gets offered this track before YouTube
         // resolves it — see [SourceResolver.substituteForYouTube] — and that

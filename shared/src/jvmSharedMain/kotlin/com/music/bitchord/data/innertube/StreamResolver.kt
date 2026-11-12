@@ -260,6 +260,10 @@ object StreamResolver {
      * outside the buffer, and each range the cache fills in.
      */
     suspend fun resolve(videoId: String): String {
+        // The one gate every YouTube *audio* resolution passes through — playback,
+        // the read-ahead, downloads, Automix's Opus read — so that switching
+        // YouTube Music off as a source needs saying exactly once, here.
+        if (!audioEnabled) throw AudioDisabledException()
         init
 
         recent[videoId]
@@ -309,6 +313,21 @@ object StreamResolver {
      * policy and `recoverFrom`.
      */
     class PermanentlyUnplayableException(reason: String) : IOException(reason)
+
+    /**
+     * Whether YouTube Music may be asked for audio at all. Set by the app from
+     * the Sources screen's switch; true unless the listener turned it off.
+     */
+    @Volatile
+    var audioEnabled: Boolean = true
+
+    /**
+     * Thrown for every YouTube audio request while [audioEnabled] is false.
+     * Not a [PermanentlyUnplayableException]: that is a verdict about one track
+     * and makes the player skip it, where this one is the listener's own
+     * setting, which the player reports and stays on.
+     */
+    class AudioDisabledException : IOException("YouTube Music is turned off as a source of audio")
 
     /**
      * Tracks that have already failed for a reason retrying cannot fix, and
@@ -681,6 +700,7 @@ object StreamResolver {
         maxKbps: Int,
         requireM4a: Boolean = false,
     ): Stream {
+        if (!audioEnabled) throw AudioDisabledException()
         val stream = downloadStream(videoId, maxKbps, requireM4a)
         val allowed = if (requireM4a) setOf("m4a") else setOf("m4a", "webm")
         check(stream.downloadExtension in allowed) {

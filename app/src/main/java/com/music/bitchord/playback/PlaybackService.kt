@@ -1387,7 +1387,13 @@ class PlaybackService : MediaLibraryService() {
             ) { _, _, _, _ -> AppSettings.effectiveAudioQuality }
                 .distinctUntilChanged()
                 .collect { ceiling ->
-                    val lost = SourceKind.entries.filter { previous.permits(it) && !ceiling.permits(it) }
+                    // With YouTube off the ceilings no longer decide which sources are
+                    // reached (see [SourceRegistry.activeForPlayback]), so none is lost.
+                    val lost = if (!SourceRegistry.youtubeEnabled()) {
+                        emptyList()
+                    } else {
+                        SourceKind.entries.filter { previous.permits(it) && !ceiling.permits(it) }
+                    }
                     previous = ceiling
                     if (lost.isNotEmpty()) onCeilingLowered(ceiling, lost)
                 }
@@ -2091,7 +2097,8 @@ class PlaybackService : MediaLibraryService() {
             }
         val revert = current
             ?.takeIf {
-                it.hasYouTubeOriginal() &&
+                SourceRegistry.youtubeEnabled() &&
+                    it.hasYouTubeOriginal() &&
                     it.localUri == null &&
                     !OriginalVersion.isPinned(it.videoId)
             }
@@ -2650,6 +2657,7 @@ class PlaybackService : MediaLibraryService() {
         val index = activePlayer.currentMediaItemIndex
         if (index !in 0 until activePlayer.mediaItemCount) return
         val song = activePlayer.currentMediaItem?.toSong() ?: return
+        if (!SourceRegistry.youtubeEnabled()) return
         if (!song.hasYouTubeOriginal() ||
             song.localUri != null ||
             OriginalVersion.isPinned(song.videoId)
@@ -3993,6 +4001,19 @@ class PlaybackService : MediaLibraryService() {
             error,
             about = mediaId,
         )
+        // YouTube Music is switched off as a source and nothing else had this
+        // track. Retrying asks the same sources the same question, and skipping
+        // would hide the very thing the listener has to know — so the error is
+        // left on the player, which is what shows it. See [SourceRegistry.noSourceFor].
+        if (isYouTubeOff(error)) {
+            SourceRegistry.noSourceFor(mediaId)
+            TrackLog.w(
+                "BitChord",
+                "$mediaId: no enabled source has it and YouTube Music is off — staying on the error",
+                about = mediaId,
+            )
+            return
+        }
         // A local file that is not there is the one failure retrying cannot
         // touch, and the only one where the fix is to stop asking for the file.
         //
@@ -4211,6 +4232,9 @@ class PlaybackService : MediaLibraryService() {
         keepComplete: Boolean,
         why: String,
     ): Boolean {
+        // Switched off: falling back to YouTube is exactly what the listener
+        // turned off, so the item stays as it is.
+        if (!SourceRegistry.youtubeEnabled()) return false
         val videoId = playbackUri.getQueryParameter("v")
         val fallback = item.toYouTubeFallbackMediaItem() ?: return false
         val mediaId = item.mediaId
@@ -4487,6 +4511,17 @@ class PlaybackService : MediaLibraryService() {
      * what the resolver actually threw. A shallow `is` check sees only the
      * outermost of those three.
      */
+    /** Whether [error] is [StreamResolver.AudioDisabledException], however deep Media3 wrapped it. */
+    private fun isYouTubeOff(error: Throwable?): Boolean {
+        var cause = error
+        var depth = 0
+        while (cause != null && depth++ < PERMANENT_CAUSE_DEPTH) {
+            if (cause is StreamResolver.AudioDisabledException) return true
+            cause = cause.cause?.takeIf { it !== cause }
+        }
+        return false
+    }
+
     private fun permanentReason(error: Throwable?): String? {
         var cause = error
         var depth = 0
