@@ -81,6 +81,13 @@ data class SourceConfig(
     val eclipseCellularSettings: Map<String, String> = emptyMap(),
     /** Eclipse addons: whether the addon's notices are shown. Only switchable if it declares `notifications`. */
     val eclipseNotices: Boolean = true,
+    /**
+     * Eclipse addons: the `User-Agent` to send to this addon, as the listener
+     * typed it. Blank (the default) sends BitChord's own. Some addon hosts refuse
+     * clients by name; what to send instead is the listener's call, per addon,
+     * and nothing here ever fills it in for them.
+     */
+    val eclipseUserAgent: String = "",
 ) {
     /** The entry of [qualityOptions] in force: the pick while the addon still lists it, else its first. */
     val activeQuality: AddonQualityOption?
@@ -110,6 +117,7 @@ data class SourceConfig(
             eclipseSettings = other.eclipseSettings,
             eclipseCellularSettings = other.eclipseCellularSettings,
             eclipseNotices = other.eclipseNotices,
+            eclipseUserAgent = other.eclipseUserAgent,
         )
 
     /** What the sources screen and the player show. Never blank. */
@@ -563,7 +571,7 @@ object SourceRegistry {
         if (base.toHttpUrlOrNull() == null) {
             return Result.failure(AddonException("That is not a usable address"))
         }
-        return EclipseClient(base).manifest().map { manifest ->
+        return EclipseClient(base, userAgent = { existing.eclipseUserAgent }).manifest().map { manifest ->
             val settingKeys = manifest.settings.map { it.key }.toSet()
             existing.copy(
                 kind = SourceKind.ECLIPSE,

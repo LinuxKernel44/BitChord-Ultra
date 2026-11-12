@@ -80,6 +80,7 @@ import com.music.bitchord.data.sources.SourceHealth
 import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.ui.components.AddonEditorAlert
+import com.music.bitchord.ui.components.EditorField
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -1102,6 +1103,8 @@ internal fun SourceEditorAlert(
 ) {
     val isNew = SourceRegistry.config(config.id) == null
     var baseUrl by remember { mutableStateOf(config.baseUrl) }
+    // Eclipse only: what to send as this addon's User-Agent. Blank sends BitChord's.
+    var userAgent by remember { mutableStateOf(config.eclipseUserAgent) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var statusIsGood by remember { mutableStateOf(false) }
@@ -1128,7 +1131,8 @@ internal fun SourceEditorAlert(
                     // this, so a new one is passed through to be read as such.
                     SourceRegistry.identify(
                         baseUrl.trim(),
-                        config.takeUnless { isNew && config.kind != SourceKind.ECLIPSE },
+                        config.takeUnless { isNew && config.kind != SourceKind.ECLIPSE }
+                            ?.let { if (it.kind == SourceKind.ECLIPSE) it.copy(eclipseUserAgent = userAgent.trim()) else it },
                     )
                 }
                     .getOrElse { Result.failure(it) }
@@ -1202,6 +1206,17 @@ internal fun SourceEditorAlert(
         // would report "Connected" over a URL nobody has tried.
         onUrlChange = { baseUrl = it; status = null },
         urlPlaceholder = "https://my-addon.example.com",
+        extraFields = if (config.kind == SourceKind.ECLIPSE) {
+            listOf(
+                EditorField(
+                    value = userAgent,
+                    onChange = { userAgent = it; status = null },
+                    placeholder = stringResource(R.string.eclipse_user_agent_placeholder),
+                ),
+            )
+        } else {
+            emptyList()
+        },
         status = status,
         statusIsGood = statusIsGood,
         testing = busy,

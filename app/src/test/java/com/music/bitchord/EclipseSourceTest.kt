@@ -339,6 +339,37 @@ class EclipseSourceTest {
         assertEquals("https://i/x.png", page.songs[0].thumbnailUrl)
     }
 
+    // ── User-Agent ────────────────────────────────────────────────────────
+
+    @Test
+    fun `the listener's own user agent is sent, and BitChord's otherwise`() = runBlocking {
+        routes["/manifest.json"] = manifest()
+        routes["/search"] = json("""{"tracks":[]}""")
+
+        source().search("default")
+        assertTrue(requestsFor("/manifest.json").last().getHeader("User-Agent")!!.startsWith("BitChord/"))
+
+        val custom = config().copy(eclipseUserAgent = "MyPlayer/9.9 (Linux)")
+        source(custom).search("custom")
+        assertEquals("MyPlayer/9.9 (Linux)", requestsFor("/search").last().getHeader("User-Agent"))
+    }
+
+    @Test
+    fun `a custom user agent is reduced to printable ascii and never empty`() {
+        assertEquals("Foo/1.0", EclipseClient.userAgentFor("Foo/1.0\r\n"))
+        assertEquals("Foo/1.0", EclipseClient.userAgentFor("  Foo/1é.0 "))
+        assertTrue(EclipseClient.userAgentFor("").startsWith("BitChord/"))
+        assertTrue(EclipseClient.userAgentFor("\n\t").startsWith("BitChord/"))
+    }
+
+    @Test
+    fun `a manifest refused with 403 is rejected so the editor can say why`() = runBlocking {
+        routes["/manifest.json"] = MockResponse().setResponseCode(403)
+        val health = source().health()
+        assertTrue(health is SourceHealth.Rejected)
+        assertEquals("HTTP 403", (health as SourceHealth.Rejected).reason)
+    }
+
     // ── Ids and notices ───────────────────────────────────────────────────
 
     @Test

@@ -55,6 +55,7 @@ class EclipseSource(
         rawBaseUrl = config.baseUrl,
         settings = ::currentSettings,
         notify = ::onNotice,
+        userAgent = { live.eclipseUserAgent },
     )
 
     /** Search rows by the addon's own id: the duration and `streamURL` a bare id can't recover. */

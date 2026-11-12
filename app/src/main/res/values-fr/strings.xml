@@ -794,7 +794,8 @@
 
     <string name="add_eclipse_addon">Ajouter une extension Eclipse</string>
     <string name="add_eclipse_addon_detail">Extension Eclipse Music : recherche, albums, artistes, playlists et rangées de catalogue</string>
-    <string name="eclipse_url_description">Collez l\'URL de l\'extension Eclipse — racine, manifest.json ou lien à jeton. BitChord lit son manifeste pour rechercher, résoudre et diffuser, et affiche ses albums, artistes, playlists et rangées de catalogue.</string>
+    <string name="eclipse_url_description">Collez l\'URL de l\'extension Eclipse — racine, manifest.json ou lien à jeton. BitChord lit son manifeste pour rechercher, résoudre et diffuser, et affiche ses albums, artistes, playlists et rangées de catalogue. Si l\'extension répond « HTTP 403 », elle refuse peut-être certains clients par leur nom : vous pouvez saisir ci-dessous le User-Agent à lui envoyer.</string>
+    <string name="eclipse_user_agent_placeholder">User-Agent (facultatif, vide = celui de BitChord)</string>
     <string name="eclipse_settings">Réglages de l\'extension</string>
     <string name="eclipse_settings_none">Cette extension n\'a aucun réglage.</string>
     <string name="eclipse_notices">Afficher les notifications de l\'extension</string>

@@ -41,6 +41,8 @@ class EclipseClient(
     rawBaseUrl: String,
     private val settings: () -> Map<String, String> = { emptyMap() },
     private val notify: (EclipseNotice, Boolean) -> Unit = { _, _ -> },
+    /** The listener's own `User-Agent` for this addon, or blank for BitChord's. See [userAgentFor]. */
+    private val userAgent: () -> String = { "" },
 ) {
     val baseUrl: String = AddonClient.normalizeBase(rawBaseUrl)
 
@@ -223,7 +225,7 @@ class EclipseClient(
             (quietUntilMs - System.currentTimeMillis()).takeIf { it > 0 }?.let { delay(it) }
             val request = Request.Builder().url(url)
                 .header("Accept", "application/json")
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", userAgentFor(userAgent()))
                 .build()
             val wait = client.newCall(request).execute().use { response ->
                 val text = response.body?.string().orEmpty()
@@ -303,6 +305,15 @@ class EclipseClient(
         private const val BACKOFF_CAP_MS = 30_000L
 
         private val USER_AGENT = "BitChord/v${com.music.bitchord.BuildConfig.VERSION_NAME}"
+
+        /**
+         * The `User-Agent` to send: [custom] when the listener set one, else
+         * BitChord's. Reduced to printable ASCII, since a header value with a
+         * newline or a control character is not something to put on the wire —
+         * and a value that reduces to nothing falls back to the default.
+         */
+        internal fun userAgentFor(custom: String): String =
+            custom.filter { it.code in 0x20..0x7E }.trim().ifEmpty { USER_AGENT }
 
         internal val json = Json {
             isLenient = true

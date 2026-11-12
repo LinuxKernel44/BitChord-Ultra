@@ -558,6 +558,8 @@ fun AddonEditorAlert(
      * on it still talking about addons.
      */
     removeLabel: String? = null,
+    /** Further fields under the address, for an editor that has more than one thing to say. */
+    extraFields: List<EditorField> = emptyList(),
     onDismiss: () -> Unit,
 ) {
     ServerEditorAlert(
@@ -571,7 +573,7 @@ fun AddonEditorAlert(
                 placeholder = urlPlaceholder,
                 keyboardType = KeyboardType.Uri,
             ),
-        ),
+        ) + extraFields,
         status = status,
         statusIsGood = statusIsGood,
         testing = testing,
