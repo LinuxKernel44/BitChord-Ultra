@@ -632,6 +632,7 @@ private fun Song.matchQuery(): String = buildString {
     // track keeps [isVideoOrigin] for AutoMix, but is intentionally audio here
     // so the normal source-quality upgrade path can improve it.
     if (isVideo) append("&m=1")
+    isrc?.takeIf { it.isNotBlank() }?.let { append("&i=").append(Uri.encode(it)) }
 }
 
 /**

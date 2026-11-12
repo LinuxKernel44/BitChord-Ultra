@@ -426,6 +426,47 @@ class AddonSource(
         )
     }
 
+    private fun formatOf(answer: AddonStream, url: String, tier: String): StreamFormat =
+        AddonStreamFormat.of(answer, url, tier)
+
+    /** What this app asks an addon for, in the vocabulary the reference host uses. */
+    private val StreamRequest.tier: String
+        get() = when (this) {
+            is StreamRequest.Lossless -> AddonClient.TIER_LOSSLESS
+            is StreamRequest.Best -> AddonClient.TIER_HIGH
+            is StreamRequest.Capped ->
+                if (maxKbps <= ModuleSource.LOW_CEILING_KBPS) AddonClient.TIER_LOW else AddonClient.TIER_HIGH
+        }
+
+    /** Dropped along with the source it belongs to — see [SourceRegistry.publish]. */
+    fun release() {
+        rows.clear()
+        client.clear()
+    }
+
+    /** Forces the next completed track lookup back onto the network. */
+    fun clearCompletedTrackCalls() {
+        client.clearCompletedTrackCalls()
+    }
+
+    private companion object {
+        const val TAG = "BitChord"
+
+        /** What a gated addon's health says, for the editor's Test line. The sources list draws its own. */
+        const val NEEDS_LOSSLESS_OUTPUT =
+            "This addon only works with a lossless output — use a lossless supported device"
+
+        /** How many search rows to remember. A long queue's worth, several times over. */
+        const val MAX_ROWS = 256
+    }
+}
+
+/**
+ * What is really on the end of a stream URL, shared by every addon-protocol
+ * source ([AddonSource] and the Eclipse one): the same answer shape, the same
+ * reading of it.
+ */
+internal object AddonStreamFormat {
     /**
      * What is really on the end of the URL, from what the addon said about it.
      *
@@ -440,7 +481,7 @@ class AddonSource(
      * [StreamFormat.isLossless] answering "unknown" is information, and
      * answering "no" when it does not know is not.
      */
-    private fun formatOf(answer: AddonStream, url: String, tier: String): StreamFormat {
+    fun of(answer: AddonStream, url: String, tier: String): StreamFormat {
         val codec = answer.statedCodec?.takeIf { it in AUDIO_CODECS }
             ?: answer.statedContainer?.takeIf { it in SELF_DESCRIBING_CONTAINERS }
             ?: answer.mimeType?.substringAfterLast('/')?.substringBefore(';')?.trim()
@@ -472,66 +513,35 @@ class AddonSource(
         )
     }
 
-    /** What this app asks an addon for, in the vocabulary the reference host uses. */
-    private val StreamRequest.tier: String
-        get() = when (this) {
-            is StreamRequest.Lossless -> AddonClient.TIER_LOSSLESS
-            is StreamRequest.Best -> AddonClient.TIER_HIGH
-            is StreamRequest.Capped ->
-                if (maxKbps <= ModuleSource.LOW_CEILING_KBPS) AddonClient.TIER_LOW else AddonClient.TIER_HIGH
-        }
+    /**
+     * Containers that name their own codec. A `.flac` holds FLAC and
+     * nothing else; an `mp4` or an `ogg` holds any of several things and
+     * says nothing on its own, so those are deliberately absent.
+     */
+    val SELF_DESCRIBING_CONTAINERS = setOf("flac", "wav", "mp3", "aiff")
 
-    /** Dropped along with the source it belongs to — see [SourceRegistry.publish]. */
-    fun release() {
-        rows.clear()
-        client.clear()
-    }
-
-    /** Forces the next completed track lookup back onto the network. */
-    fun clearCompletedTrackCalls() {
-        client.clearCompletedTrackCalls()
-    }
-
-    private companion object {
-        const val TAG = "BitChord"
-
-        /** What a gated addon's health says, for the editor's Test line. The sources list draws its own. */
-        const val NEEDS_LOSSLESS_OUTPUT =
-            "This addon only works with a lossless output — use a lossless supported device"
-
-        /** How many search rows to remember. A long queue's worth, several times over. */
-        const val MAX_ROWS = 256
-
-        /**
-         * Containers that name their own codec. A `.flac` holds FLAC and
-         * nothing else; an `mp4` or an `ogg` holds any of several things and
-         * says nothing on its own, so those are deliberately absent.
-         */
-        val SELF_DESCRIBING_CONTAINERS = setOf("flac", "wav", "mp3", "aiff")
-
-        /**
-         * What may be believed as a codec, from a field or from a URL's
-         * extension.
-         *
-         * `mp4` is in the list and is the interesting one. It names a container
-         * rather than a codec, so it is not in [SELF_DESCRIBING_CONTAINERS] and
-         * never overrides something better — but leaving it out entirely was
-         * wrong in a way worth spelling out. A live addon's JioSaavn backend
-         * answers `{"format": "mp4", "quality": "320kbps"}` with a URL ending
-         * `_320.mp4`, and with `mp4` unrecognised *nothing* named the codec: the
-         * format came back with a null one, and a null codec means
-         * [StreamFormat.isLossless] answers "unknown" rather than "no".
-         *
-         * Unknown is not a harmless answer here. It is the answer that lets a
-         * 320kbps AAC stream stay in contention against a FLAC when
-         * [SourceResolver] is choosing between them, on the grounds that nobody
-         * could rule it out. Recording the container says the true and useful
-         * thing — this is MP4, and MP4 is not a lossless container — without
-         * inventing the codec inside it.
-         */
-        val AUDIO_CODECS = setOf(
-            "flac", "alac", "wav", "aiff", "mp3", "aac", "he-aac", "m4a", "mp4",
-            "ogg", "opus", "vorbis", "webm", "eac3-joc", "ec3-joc",
-        )
-    }
+    /**
+     * What may be believed as a codec, from a field or from a URL's
+     * extension.
+     *
+     * `mp4` is in the list and is the interesting one. It names a container
+     * rather than a codec, so it is not in [SELF_DESCRIBING_CONTAINERS] and
+     * never overrides something better — but leaving it out entirely was
+     * wrong in a way worth spelling out. A live addon's JioSaavn backend
+     * answers `{"format": "mp4", "quality": "320kbps"}` with a URL ending
+     * `_320.mp4`, and with `mp4` unrecognised *nothing* named the codec: the
+     * format came back with a null one, and a null codec means
+     * [StreamFormat.isLossless] answers "unknown" rather than "no".
+     *
+     * Unknown is not a harmless answer here. It is the answer that lets a
+     * 320kbps AAC stream stay in contention against a FLAC when
+     * [SourceResolver] is choosing between them, on the grounds that nobody
+     * could rule it out. Recording the container says the true and useful
+     * thing — this is MP4, and MP4 is not a lossless container — without
+     * inventing the codec inside it.
+     */
+    val AUDIO_CODECS = setOf(
+        "flac", "alac", "wav", "aiff", "mp3", "aac", "he-aac", "m4a", "mp4",
+        "ogg", "opus", "vorbis", "webm", "eac3-joc", "ec3-joc",
+    )
 }

@@ -141,6 +141,12 @@ data class Song(
      * non-history rows (e.g. search results, library).
      */
     val feedbackToken: String? = null,
+    /**
+     * The recording's ISRC when the catalogue that produced this row stated one
+     * (an Eclipse addon does). Lets another Eclipse addon be asked for the exact
+     * recording instead of a title-and-artist guess. Null on every other row.
+     */
+    val isrc: String? = null,
 ) {
     /** Legacy derived property: true if and only if [queueTier] is [QueueTier.AUTOPLAY]. */
     val fromAutoplay: Boolean get() = queueTier == QueueTier.AUTOPLAY

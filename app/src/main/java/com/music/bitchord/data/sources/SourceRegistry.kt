@@ -14,6 +14,7 @@ import com.music.bitchord.data.sources.addon.AddonException
 import com.music.bitchord.data.sources.addon.AddonQualityOption
 import com.music.bitchord.data.sources.addon.DetectedFormat
 import com.music.bitchord.data.sources.addon.SourceFormats
+import com.music.bitchord.data.sources.eclipse.EclipseClient
 import com.music.bitchord.data.settings.AudioQuality
 import com.music.bitchord.playback.audio.LosslessOutput
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +71,16 @@ data class SourceConfig(
      * the manifest is next read.
      */
     val bitchordAuth: Boolean? = null,
+    /**
+     * Eclipse addons: the listener's values for the settings form the manifest
+     * declares, keyed by the setting's `key`. Sent back as query parameters on
+     * every request. Absent keys fall back to the manifest's own default.
+     */
+    val eclipseSettings: Map<String, String> = emptyMap(),
+    /** Eclipse addons: the values for `perNetwork` settings while on a metered (cellular) connection. */
+    val eclipseCellularSettings: Map<String, String> = emptyMap(),
+    /** Eclipse addons: whether the addon's notices are shown. Only switchable if it declares `notifications`. */
+    val eclipseNotices: Boolean = true,
 ) {
     /** The entry of [qualityOptions] in force: the pick while the addon still lists it, else its first. */
     val activeQuality: AddonQualityOption?
@@ -94,6 +105,11 @@ data class SourceConfig(
             checkValidLossless = other.checkValidLossless,
             qualityOptions = other.qualityOptions,
             bitchordAuth = other.bitchordAuth,
+            // The Eclipse form values are read live, like the manifest switches,
+            // so editing them must not throw the warm source away.
+            eclipseSettings = other.eclipseSettings,
+            eclipseCellularSettings = other.eclipseCellularSettings,
+            eclipseNotices = other.eclipseNotices,
         )
 
     /** What the sources screen and the player show. Never blank. */
@@ -368,6 +384,9 @@ object SourceRegistry {
 
     fun config(configId: String): SourceConfig? = configs.value.firstOrNull { it.id == configId }
 
+    /** Every enabled Eclipse addon, in the user's order. For Home rows, search and detail pages. */
+    fun eclipseSources(): List<EclipseSource> = active().filterIsInstance<EclipseSource>()
+
     /**
      * Drops completed addon track answers for an explicit quality retry.
      *
@@ -405,7 +424,11 @@ object SourceRegistry {
      * and not just the one with a text field.
      */
     private fun SourceConfig.tidied(): SourceConfig =
-        if (kind == SourceKind.ADDON) copy(baseUrl = AddonClient.normalizeBase(baseUrl)) else this
+        if (kind == SourceKind.ADDON || kind == SourceKind.ECLIPSE) {
+            copy(baseUrl = AddonClient.normalizeBase(baseUrl))
+        } else {
+            this
+        }
 
     fun remove(configId: String) {
         val target = config(configId) ?: return
@@ -474,8 +497,7 @@ object SourceRegistry {
         // would be answering a question about the old address with the new one
         // selected.
         previous.values.filterNot { it in instances.values }
-            .filterIsInstance<AddonSource>()
-            .forEach { it.release() }
+            .forEach { (it as? AddonSource)?.release() ?: (it as? EclipseSource)?.release() }
         if (persist && ::prefs.isInitialized) {
             prefs.edit()
                 .putString(KEY_SOURCES, json.encodeToString(ListSerializer(SourceConfig.serializer()), next))
@@ -499,6 +521,9 @@ object SourceRegistry {
      * its on/off state; a new source gets a fresh config.
      */
     suspend fun identify(url: String, existing: SourceConfig? = null): Result<SourceConfig> {
+        // The Eclipse button on the sources screen names its kind up front, so
+        // that is not detected: the manifest is read as an Eclipse one.
+        if (existing?.kind == SourceKind.ECLIPSE) return identifyEclipse(url, existing)
         val detected = SourceFormats.identify(url).getOrElse { return Result.failure(it) }
         return when (detected) {
             is DetectedFormat.Addon -> Result.success(
@@ -529,6 +554,25 @@ object SourceRegistry {
                 ),
             )
             is DetectedFormat.Unsupported -> Result.failure(AddonException(detected.reason))
+        }
+    }
+
+    private suspend fun identifyEclipse(url: String, existing: SourceConfig): Result<SourceConfig> {
+        val base = AddonClient.normalizeBase(url)
+        if (base.toHttpUrlOrNull() == null) {
+            return Result.failure(AddonException("That is not a usable address"))
+        }
+        return EclipseClient(base).manifest().map { manifest ->
+            val settingKeys = manifest.settings.map { it.key }.toSet()
+            existing.copy(
+                kind = SourceKind.ECLIPSE,
+                baseUrl = base,
+                label = manifest.displayName,
+                // A different address may be a different addon: values for
+                // settings it never declared are no longer meaningful.
+                eclipseSettings = existing.eclipseSettings.filterKeys { it in settingKeys },
+                eclipseCellularSettings = existing.eclipseCellularSettings.filterKeys { it in settingKeys },
+            )
         }
     }
 
@@ -583,6 +627,7 @@ object SourceRegistry {
 
     private fun build(config: SourceConfig): MusicSource = when (config.kind) {
         SourceKind.ADDON -> AddonSource(config)
+        SourceKind.ECLIPSE -> EclipseSource(config)
         // Same protocol, same implementation — the kinds differ only in rank.
         SourceKind.CUSTOM_MODULE -> ModuleSource(config)
         SourceKind.MODULE -> ModuleSource(config)

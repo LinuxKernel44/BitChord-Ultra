@@ -113,6 +113,8 @@ fun SourcesScreen(
     onEditSource: (SourceConfig) -> Unit,
     /** Asks the activity to open an addon's quality list — raised for the same reason as [onEditSource]. */
     onChooseSourceQuality: (SourceConfig) -> Unit,
+    /** Asks the activity to open an Eclipse addon's settings form — raised for the same reason as [onEditSource]. */
+    onEditEclipseSettings: (SourceConfig) -> Unit,
     /** Asks the activity to explain an addon's "Outdated addon" line — raised for the same reason. */
     onExplainOutdatedAddon: (SourceConfig) -> Unit,
     /**
@@ -255,6 +257,7 @@ fun SourcesScreen(
                         // change, so a tap on them would open an empty editor.
                         onClick = if (config.kind.needsServer) ({ onEditSource(config) }) else null,
                         onChooseQuality = { onChooseSourceQuality(config) },
+                        onOpenEclipseSettings = { onEditEclipseSettings(config) },
                         onExplainOutdated = { onExplainOutdatedAddon(config) },
                         // YouTube gets no switch at all — see
                         // [SourceRegistry.setEnabled] for why one would be a lie.
@@ -299,7 +302,15 @@ fun SourcesScreen(
 
             RowDivider()
             AddSourceRow(
+                title = stringResource(R.string.add_addon),
+                detail = stringResource(R.string.add_addon_detail),
                 onClick = { onEditSource(SourceConfig(kind = SourceKind.ADDON)) },
+            )
+            RowDivider()
+            AddSourceRow(
+                title = stringResource(R.string.add_eclipse_addon),
+                detail = stringResource(R.string.add_eclipse_addon_detail),
+                onClick = { onEditSource(SourceConfig(kind = SourceKind.ECLIPSE)) },
             )
         }
 
@@ -649,7 +660,7 @@ private const val SWAP_THRESHOLD = 0.6f
  * put another one in here".
  */
 @Composable
-private fun AddSourceRow(onClick: () -> Unit) {
+private fun AddSourceRow(title: String, detail: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -670,12 +681,12 @@ private fun AddSourceRow(onClick: () -> Unit) {
         Spacer(Modifier.width(ICON_GAP))
         Column(Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.add_addon),
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = stringResource(R.string.add_addon_detail),
+                text = detail,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -770,6 +781,8 @@ private fun SourceRow(
     health: SourceHealth?,
     onClick: (() -> Unit)?,
     onChooseQuality: () -> Unit,
+    /** Opens an Eclipse addon's settings form; only shown on an [SourceKind.ECLIPSE] row. */
+    onOpenEclipseSettings: () -> Unit = {},
     /** Explains the "Outdated addon" line, which only an addon with [needsUpdate] shows. */
     onExplainOutdated: () -> Unit,
     /** Null for a source that cannot be switched off, which gets a label instead. */
@@ -815,6 +828,7 @@ private fun SourceRow(
         Icon(
             imageVector = when (config.kind) {
                 SourceKind.ADDON -> SfIcons.Extension
+                SourceKind.ECLIPSE -> SfIcons.Extension
                 SourceKind.CUSTOM_MODULE -> SfIcons.Extension
                 SourceKind.MODULE -> SfIcons.Extension
                 SourceKind.JIOSAAVN -> SfIcons.GraphicEq // or some other icon
@@ -843,6 +857,38 @@ private fun SourceRow(
             // addon is down or waiting on a lossless output. One line whatever
             // the label's length, so it adds the same height to every addon;
             // the full label is in the list it opens.
+            if (config.kind == SourceKind.ECLIPSE && config.isComplete) {
+                Row(
+                    modifier = Modifier
+                        .clickable(
+                            onClickLabel = stringResource(R.string.eclipse_settings),
+                            onClick = onOpenEclipseSettings,
+                        )
+                        .padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = SfIcons.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.eclipse_settings),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Icon(
+                        imageVector = SfIcons.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(10.dp),
+                    )
+                }
+            }
             val quality = config.activeQuality
             if (config.kind == SourceKind.ADDON && config.isComplete && quality != null) {
                 Row(
@@ -1068,7 +1114,14 @@ internal fun SourceEditorAlert(
         status = null
         scope.launch {
             val identified = withContext(Dispatchers.IO) {
-                runCatching { SourceRegistry.identify(baseUrl.trim(), config.takeUnless { isNew }) }
+                runCatching {
+                    // An Eclipse addon names its kind on the button that opened
+                    // this, so a new one is passed through to be read as such.
+                    SourceRegistry.identify(
+                        baseUrl.trim(),
+                        config.takeUnless { isNew && config.kind != SourceKind.ECLIPSE },
+                    )
+                }
                     .getOrElse { Result.failure(it) }
             }
             val found = identified.getOrNull()
@@ -1127,11 +1180,13 @@ internal fun SourceEditorAlert(
     AddonEditorAlert(
         hazeState = hazeState,
         title = if (isNew) {
-            stringResource(R.string.add_addon)
+            stringResource(if (config.kind == SourceKind.ECLIPSE) R.string.add_eclipse_addon else R.string.add_addon)
         } else {
             config.displayName
         },
-        description = stringResource(R.string.addon_url_description),
+        description = stringResource(
+            if (config.kind == SourceKind.ECLIPSE) R.string.eclipse_url_description else R.string.addon_url_description,
+        ),
         urlValue = baseUrl,
         // A result describes the address it was run against, so the moment that
         // address is edited it stops being true and is cleared. Left up, it

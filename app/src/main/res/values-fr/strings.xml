@@ -792,6 +792,20 @@
 
     <string name="add_addon">Ajouter une extension</string>
 
+    <string name="add_eclipse_addon">Ajouter une extension Eclipse</string>
+    <string name="add_eclipse_addon_detail">Extension Eclipse Music : recherche, albums, artistes, playlists et rangées de catalogue</string>
+    <string name="eclipse_url_description">Collez l\'URL de l\'extension Eclipse — racine, manifest.json ou lien à jeton. BitChord lit son manifeste pour rechercher, résoudre et diffuser, et affiche ses albums, artistes, playlists et rangées de catalogue.</string>
+    <string name="eclipse_settings">Réglages de l\'extension</string>
+    <string name="eclipse_settings_none">Cette extension n\'a aucun réglage.</string>
+    <string name="eclipse_notices">Afficher les notifications de l\'extension</string>
+    <string name="eclipse_notices_help">Messages envoyés par l\'extension : limite de débit, « préparation du titre », etc.</string>
+    <string name="eclipse_on_wifi">En Wi-Fi</string>
+    <string name="eclipse_on_mobile">En données mobiles</string>
+    <string name="eclipse_settings_loading">Lecture des réglages de l\'extension…</string>
+    <string name="eclipse_settings_unreachable">Extension injoignable : %1$s</string>
+    <string name="eclipse_reset_defaults">Rétablir les valeurs par défaut</string>
+    <string name="eclipse_home_row_more">Plus</string>
+    <string name="search_eclipse_albums">Albums de %1$s</string>
     <string name="add_addon_detail">Pointez BitChord vers un serveur d\'extension hébergé ou partagé</string>
 
     <string name="addon_url_description">Collez l\'URL de l\'extension — racine ou manifest.json. BitChord lira ce qu\'il peut rechercher et diffuser.</string>

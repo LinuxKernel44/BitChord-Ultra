@@ -187,6 +187,7 @@ object SourceResolver {
         album = uri.getQueryParameter("l"),
         isExplicit = uri.getQueryParameter("e")?.let { it == "1" },
         isVideo = uri.getQueryParameter("m") == "1",
+        isrc = uri.getQueryParameter("i")?.ifBlank { null },
     )
 
     /**
@@ -1123,6 +1124,17 @@ object SourceResolver {
         lengthLater: (suspend () -> Int?)? = null,
         checkFileLength: Boolean = false,
     ): SourceStream? {
+        // An Eclipse addon is asked for the exact recording first (ISRC, then
+        // title and artist). Its answer is a match by contract, and "not held"
+        // means this source is a miss — the protocol does not want a guess on
+        // top. Only an addon with neither endpoint falls through to the search.
+        if (source is EclipseSource) {
+            when (val exact = attempt(source) { source.exact(target, request) }) {
+                is EclipseSource.Exact.Found -> return exact.stream
+                EclipseSource.Exact.Missing -> return null
+                else -> Unit
+            }
+        }
         var matchOn = target
         for (query in TrackMatcher.queries(target)) {
             val candidates = attempt(source) {

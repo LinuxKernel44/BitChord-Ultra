@@ -167,6 +167,8 @@ import com.music.bitchord.ui.components.handleDacVolumeKey
 import com.music.bitchord.ui.components.VolumeHud
 import com.music.bitchord.ui.navigation.AppDestination
 import com.music.bitchord.ui.navigation.AppRoute
+import com.music.bitchord.ui.screens.EclipseSettingsDialog
+import com.music.bitchord.ui.components.EclipseNoticeBanner
 import com.music.bitchord.ui.screens.EqualizerPresetPage
 import com.music.bitchord.ui.screens.SettingsChoicePage
 import com.music.bitchord.ui.components.SpotifyImportAlert
@@ -646,6 +648,7 @@ private fun BitChordApp(
     // and the mini player, like every other alert in the app.
     var editingSource by remember { mutableStateOf<SourceConfig?>(null) }
     var choosingSourceQuality by remember { mutableStateOf<SourceConfig?>(null) }
+    var editingEclipseSettings by remember { mutableStateOf<SourceConfig?>(null) }
     /** An addon whose "Outdated addon" line was tapped; see [SourceConfig.needsAddonUpdate]. */
     var explainingOutdatedAddon by remember { mutableStateOf<SourceConfig?>(null) }
     var confirmJioSaavn by remember { mutableStateOf(false) }
@@ -3063,6 +3066,7 @@ private fun BitChordApp(
                                 contentPadding = listPadding,
                                 onEditSource = { editingSource = it },
                                 onChooseSourceQuality = { choosingSourceQuality = it },
+                                onEditEclipseSettings = { editingEclipseSettings = it },
                                 onExplainOutdatedAddon = { explainingOutdatedAddon = it },
                                 onEditWebDav = { showWebDavEditor = true },
                                 onEditSmb = { showSmbEditor = true },
@@ -5855,6 +5859,15 @@ private fun BitChordApp(
                     editingSource = null
                 },
                 scope = scope,
+            )
+        }
+
+        EclipseNoticeBanner()
+
+        editingEclipseSettings?.let { config ->
+            EclipseSettingsDialog(
+                config = config,
+                onDismiss = { editingEclipseSettings = null },
             )
         }
 

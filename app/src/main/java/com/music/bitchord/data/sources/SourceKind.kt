@@ -82,6 +82,25 @@ enum class SourceKind(
     ),
 
     /**
+     * An Eclipse Music addon server (https://eclipsemusic.app/docs).
+     *
+     * The same family of plain-HTTP JSON protocol as [ADDON], but a distinct kind
+     * because it goes well beyond search and stream: ISRC resolution, albums,
+     * artists, playlists, catalogue rows for Home and Explore, a settings form the
+     * host draws from the manifest, and notices the addon wants shown. Joins the
+     * user-ordered priority group with [ADDON] (rank 0).
+     */
+    ECLIPSE(
+        label = "Eclipse addon",
+        detail = "An Eclipse Music addon server. Searched, resolved and streamed over plain " +
+            "HTTP, with its own albums, artists, playlists and catalogue rows.",
+        labels = listOf("FLAC", "Lossless", "Hi-Res", "Catalogs"),
+        needsServer = true,
+        canServeLossless = true,
+        rank = 0,
+    ),
+
+    /**
      * A module index the user pointed at themselves.
      *
      * Legacy, and no longer offered: the sources screen has no way to add one
